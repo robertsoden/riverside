@@ -117,7 +117,7 @@ const C = {
   hwy:'#F2E2B6', hwyCase:'#BCA46A', path:'#FFFFFF', pathCase:'#93A185', cycle:'#A8562C',
   steps:'#5E4B39', wall:'#5E5A50', bound:'#587E43', contour:'#7E8C6E',
   label:'#2A332E', street:'#4E4C45', halo:'#F4F5F0', waterLabel:'#214A58', parkLabel:'#243F1D',
-  waterDeep:'#AFC9D4', waterLine:'#7FA3B2', bldgShadow:'#8F8B82', bridgeCase:'#7E7A70', rail:'#6E6B63', hood:'#6F6D66', paper:'#ECECE8', cliff:'#7C7568'
+  waterDeep:'#8FB0BF', waterLine:'#7FA3B2', bldgShadow:'#8F8B82', bridgeCase:'#7E7A70', rail:'#6E6B63', hood:'#6F6D66', paper:'#ECECE8', cliff:'#7C7568'
 };
 const ICONS=['monument','playground','toilets','water','dogrun','access','viewpoint'];
 // relief lit from the screen's upper left for each orientation (true azimuths)
@@ -131,6 +131,7 @@ const style = {
   glyphs: BASE + 'fonts/{fontstack}/{range}.pbf',
   sources:{
     land:{type:'geojson',data:D('land.geojson')},
+    deepwater:{type:'geojson',data:D('deepwater.geojson')},
     landmarks:{type:'geojson',data:D('landmarks.geojson')},
     hoods:{type:'geojson',data:D('hoods.geojson')},
     rail:{type:'geojson',data:D('rail.geojson')},
@@ -150,7 +151,7 @@ const style = {
     city_wall:{type:'geojson',data:D('city_wall.geojson')},
     empty:{type:'geojson',data:{type:'FeatureCollection',features:[]}},
     parkpt:{type:'geojson',data:{type:'FeatureCollection',features:[{type:'Feature',properties:{},geometry:{type:'Point',coordinates:[-73.9716,40.8030]}}]}},
-    riverlabel:{type:'geojson',data:{type:'FeatureCollection',features:[{type:'Feature',properties:{},geometry:{type:'Point',coordinates:[-73.97460,40.80421]}}]}},
+    riverlabel:{type:'geojson',data:{type:'FeatureCollection',features:[{type:'Feature',properties:{},geometry:{type:'Point',coordinates:[-73.99389,40.78521]}},{type:'Feature',properties:{},geometry:{type:'Point',coordinates:[-73.97893,40.80578]}},{type:'Feature',properties:{},geometry:{type:'Point',coordinates:[-73.96397,40.82635]}}]}}, // mid-river, spaced along the park
     building:{type:'geojson',data:D('building.geojson')},
     road:{type:'geojson',data:D('road.geojson')},
     path:{type:'geojson',data:D('path.geojson')},
@@ -163,6 +164,8 @@ const style = {
   layers:[
     {id:'bg',type:'background',paint:{'background-color':C.paper}},
     {id:'water',type:'fill',source:'water',paint:{'fill-color':C.water}},
+    // gentle darkening away from shore: ten stacked, very faint bands with antialiasing off, so no edges show
+    {id:'deep',type:'fill',source:'deepwater',paint:{'fill-color':C.waterDeep,'fill-opacity':0.09,'fill-antialias':false}},
     {id:'land',type:'fill',source:'land',paint:{'fill-color':C.land}},
     {id:'pier',type:'fill',source:'pier',paint:{'fill-color':C.land,'fill-outline-color':'#C2BFB6'}},
     {id:'park-other',type:'fill',source:'park',paint:{'fill-color':C.park}},
@@ -218,7 +221,7 @@ const style = {
     {id:'path-bridge',type:'line',source:'path',filter:['==',['get','bridge'],true],minzoom:14.5,paint:{'line-color':C.path,'line-width':['interpolate',['linear'],['zoom'],15,1.6,18,5.5]}},
 
     {id:'water-label',type:'symbol',source:'riverlabel',
-      layout:{'symbol-placement':'point','text-field':'Hudson River','text-font':['SourceSerif4-Italic'],'text-size':['interpolate',['linear'],['zoom'],12,14,17,26],'text-rotation-alignment':'map','text-rotate':-61,'text-letter-spacing':0.18,'text-anchor':'center'},
+      layout:{'symbol-placement':'point','text-field':'Hudson River','text-font':['SourceSerif4-Italic'],'text-size':['interpolate',['linear'],['zoom'],12,14,17,26],'text-rotation-alignment':'map','text-rotate':-61,'text-letter-spacing':0.18,'text-anchor':'center','text-allow-overlap':true,'text-ignore-placement':true},
       paint:{'text-color':C.waterLabel,'text-opacity':0.9}},
     {id:'hood',type:'symbol',source:'hoods',minzoom:11.5,maxzoom:16.5,
       layout:{'text-field':['upcase',['get','name']],'text-font':['FiraSans-Regular'],'text-size':['interpolate',['linear'],['zoom'],12,10,16,13],'text-letter-spacing':0.32,'text-rotation-alignment':'viewport','text-max-width':12,'text-padding':6},
