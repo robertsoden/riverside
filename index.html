@@ -162,8 +162,15 @@ function sPt(p,k){ const [al,ac]=toAxis({lng:p[0],lat:p[1]}); return fromAxis(al
 const mapC=(c,fn)=> typeof c[0]==='number' ? fn(c) : c.map(x=>mapC(x,fn));
 function sGeom(g,k){ if(!g) return g; if(g.type==='GeometryCollection') return {...g,geometries:g.geometries.map(x=>sGeom(x,k))};
   return {...g,coordinates:mapC(g.coordinates,p=>sPt(p,k))}; }
-const sFC=(fc,k)=>({...fc,features:fc.features.map(f=>({...f,geometry:sGeom(f.geometry,k)}))});
-const segCoords=sg=> K===1 ? sg.coords : sg.coords.map(p=>sPt(p,K));
+// in-park buildings carry rc (an anchor point): they are moved to their stretched position but not widened
+function shiftGeom(g,k,rc){ const d=toAxis({lng:rc[0],lat:rc[1]})[1]*(k-1);
+  return {...g,coordinates:mapC(g.coordinates,p=>{ const [al,ac]=toAxis({lng:p[0],lat:p[1]}); return fromAxis(al,ac+d); })}; }
+const sFC=(fc,k)=>({...fc,features:fc.features.map(f=>({...f,geometry:(f.properties&&f.properties.rc&&f.geometry&&f.geometry.coordinates)?shiftGeom(f.geometry,k,f.properties.rc):sGeom(f.geometry,k)}))});
+// relief and trees: the widened view uses images rendered directly in stretched space (round crowns, crisp relief)
+// when segments.json lists them for the current K; otherwise the true-scale image is stretched
+const preK=sg=> K!==1 && sg.k && sg.k[String(K)];
+const segCoords=sg=> K===1 ? sg.coords : (preK(sg) || sg.coords.map(p=>sPt(p,K)));
+const segUrl=(kind,sg,az)=> D(kind+'_'+sg.i+'_'+az+(preK(sg)?'_k'+K:'')+'.webp');
 function northDeg(){ const a=GRID*Math.PI/180; return Math.atan2(-K*Math.sin(a),Math.cos(a))*180/Math.PI; }
 // GeoJSON files load through rp://, which applies the current stretch before MapLibre sees them
 const ORIG={};
@@ -402,8 +409,8 @@ function setShape(on){
   K=k;
   Object.keys(style.sources).forEach(id=>{ const src=style.sources[id]; if(src.type!=='geojson') return;
     map.getSource(id).setData(INLINE[id] ? (K===1?INLINE[id]:sFC(INLINE[id],K)) : src.data); });
-  SEGS.forEach(sg=>['relief','canopy'].forEach(kind=>{ const src=map.getSource(kind+'-'+sg.i);
-    if(src) src.updateImage({url:src.url,coordinates:segCoords(sg)}); }));
+  SEGS.forEach(sg=>[['relief','relief'],['canopy','trees']].forEach(([kind,file])=>{ const src=map.getSource(kind+'-'+sg.i);
+    if(src) src.updateImage({url:segUrl(file,sg,src._az),coordinates:segCoords(sg)}); }));
   clamping=true; map.jumpTo({center:fromAxis(al,ac*K/oldK),zoom:z}); clamping=false;
   applyView(false,false,true);
   syncShapeUI();
@@ -443,17 +450,17 @@ function ensureSegments(){
     const [w,s_,e,n]=segBounds(sg);
     const near=!(e<vb[0]||w>vb[2]||n<vb[1]||s_>vb[3]);
     if(near && !map.getSource('canopy-'+sg.i)){
-      map.addSource('canopy-'+sg.i,{type:'image',url:D('trees_'+sg.i+'_'+az+'.webp'),coordinates:segCoords(sg)});
+      map.addSource('canopy-'+sg.i,{type:'image',url:segUrl('trees',sg,az),coordinates:segCoords(sg)});
       map.getSource('canopy-'+sg.i)._az=az;
       map.addLayer({id:'canopy-'+sg.i,type:'raster',source:'canopy-'+sg.i,layout:{visibility:vis.canopy?'visible':'none'},paint:{'raster-opacity':['interpolate',['linear'],['zoom'],15,TREE_OPACITY,18,0.3],'raster-fade-duration':0}},'canopy-anchor');
-      map.addSource('relief-'+sg.i,{type:'image',url:D('relief_'+sg.i+'_'+az+'.webp'),coordinates:segCoords(sg)});
+      map.addSource('relief-'+sg.i,{type:'image',url:segUrl('relief',sg,az),coordinates:segCoords(sg)});
       map.getSource('relief-'+sg.i)._az=az;
-      map.addLayer({id:'relief-'+sg.i,type:'raster',source:'relief-'+sg.i,layout:{visibility:vis.relief?'visible':'none'},paint:{'raster-opacity':RELIEF_OPACITY,'raster-fade-duration':0}},'relief-anchor');
+      map.addLayer({id:'relief-'+sg.i,type:'raster',source:'relief-'+sg.i,layout:{visibility:vis.relief?'visible':'none'},paint:{'raster-opacity':['interpolate',['linear'],['zoom'],15,RELIEF_OPACITY,18,0.55],'raster-fade-duration':0}},'relief-anchor');   // relief eases off when zoomed in
     }
     const src=map.getSource('relief-'+sg.i);
-    if(src && src._az!==az){ src._az=az; src.updateImage({url:D('relief_'+sg.i+'_'+az+'.webp'),coordinates:segCoords(sg)}); }
+    if(src && src._az!==az){ src._az=az; src.updateImage({url:segUrl('relief',sg,az),coordinates:segCoords(sg)}); }
     const ts=map.getSource('canopy-'+sg.i);
-    if(ts && ts._az!==az){ ts._az=az; ts.updateImage({url:D('trees_'+sg.i+'_'+az+'.webp'),coordinates:segCoords(sg)}); }
+    if(ts && ts._az!==az){ ts._az=az; ts.updateImage({url:segUrl('trees',sg,az),coordinates:segCoords(sg)}); }
   });
 }
 fetch(D('segments.json')).then(r=>r.json()).then(j=>{SEGS=j; if(map.loaded()) ensureSegments();});
