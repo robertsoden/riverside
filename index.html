@@ -296,8 +296,12 @@ function applyView(first, animate=true){
     const w=map.getContainer().clientWidth-padL-pad, h=map.getContainer().clientHeight-2*pad-(innerWidth>560?0:innerHeight*0.42);
     const [along,across]=[7900,1300];
     const [spanX,spanY]= [across,along];
+    // the container can be zero-sized while the page is still being laid out (e.g. inside an embedding frame):
+    // keep the orientation, skip the fit, and fit again once it has a real size
+    if (!(w>80 && h>80)) { map.setBearing(bearing); document.getElementById('north').style.transform=`rotate(${-bearing}deg)`; return; }
     const mpp=Math.max(spanX/w, spanY/h);
     const zoom=Math.log2(78271.517*Math.cos(SECTION_CENTER[1]*Math.PI/180)/mpp);
+    if (!isFinite(zoom)) return;
     // shift the centre so the section sits in the visible area beside/above the panel
     cam={center:SECTION_CENTER, zoom, offset:[(padL-pad)/2, innerWidth>560?0:-(innerHeight*0.42)/2]};
   } else {
@@ -326,6 +330,10 @@ map.on('move',()=>{
   const cal=Math.max(-AX.half,Math.min(AX.half,al)), cac=Math.max(-AX.across,Math.min(AX.across,ac));
   if(cal!==al||cac!==ac){ clamping=true; map.jumpTo({center:fromAxis(cal,cac)}); clamping=false; }
 });
+// refit when the map's own size changes (first layout, rotation, window resize) until the reader moves the map
+let userMoved=false;
+['dragstart','zoomstart','rotatestart'].forEach(ev=>map.on(ev,e=>{ if(e.originalEvent) userMoved=true; }));
+map.on('resize',()=>{ if(!userMoved) applyView(false,false); });
 let rt; addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(()=>applyView(false,false),200)});
 
 const vis={relief:true,canopy:true};
