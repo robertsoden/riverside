@@ -47,6 +47,8 @@ details[open] summary::before{content:"▾ ";}
 .list button:hover{background:#7f8f7f1f}
 .list .k{flex:0 0 72px;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.05em}
 .note{font-size:11.5px;color:var(--muted);margin:0}
+.shape{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12.5px}
+.shape label{display:flex;align-items:center;gap:6px;cursor:pointer}
 .north{position:absolute;z-index:2;right:12px;top:calc(92px + env(safe-area-inset-top,0px));width:34px;height:34px;border-radius:50%;background:#FFFFFFE6;box-shadow:0 0 0 2px #0000001a;display:grid;place-items:center;pointer-events:none}
 .list .grp{font:600 10.5px/1 var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:10px 4px 4px}
 .list .near{margin-left:auto;color:var(--muted);font-size:11px;white-space:nowrap;font-variant-numeric:tabular-nums}
@@ -74,6 +76,11 @@ details[open] summary::before{content:"▾ ";}
   </div>
   <section>
     <h2>Layers</h2>
+    <div class="shape" role="radiogroup" aria-label="Map shape">
+      <label><input type="radio" name="shape" id="shape-true" value="true" checked> True to scale</label>
+      <label><input type="radio" name="shape" id="shape-stretch" value="stretch"> Stretched east–west</label>
+    </div>
+    <p class="note" id="stretch-note" hidden>East–west distances are drawn 1.6× wider so the park reads more easily. North–south stays to scale; the scale bar is hidden while stretched.</p>
     <div class="toggles">
       <label><input type="checkbox" id="t-relief" checked> Relief</label>
       <label><input type="checkbox" id="t-canopy" checked> Tree canopy</label>
@@ -292,21 +299,21 @@ map.on('load',async()=>{
 });
 
 let view='grid', fitAll=null;
-function applyView(first, animate=true){
+function applyView(first, animate=true, limitsOnly=false){
   const bearing = view==='grid' ? gridBearing() : 0;
   const wide = stageW()>560, padL = wide?330:24, pad=24;
   let cam;
   if (view==='grid'){
     // fit the whole park along its own axis (59th–158th ≈ 7.6 km)
     const w=map.getContainer().clientWidth-padL-pad, h=map.getContainer().clientHeight-2*pad-(wide?0:innerHeight*0.42);
-    const [along,across]=[7900,1300];
+    const [along,across]=[7900,1300*K];
     const [spanX,spanY]= [across,along];
     // the container can be zero-sized while the page is still being laid out (e.g. inside an embedding frame):
     // keep the orientation, skip the fit, and fit again once it has a real size
-    if (!(w>80 && h>80)) { map.setBearing(bearing); document.getElementById('north').style.transform=`rotate(${-bearing}deg)`; return; }
+    if (!(w>80 && h>80)) { map.setBearing(bearing); document.getElementById('north').style.transform=`rotate(${northDeg()}deg)`; return; }
     const k=78271.517*Math.cos(SECTION_CENTER[1]*Math.PI/180);
     const zoomAll=Math.log2(k/Math.max(spanX/w, spanY/h));      // whole park: the zoom-out limit
-    const zoom=Math.log2(k/Math.max(1300/w, 2800/h));           // opening view: ~2.8 km of the park (about 40 blocks)
+    const zoom=Math.log2(k/Math.max(1300*K/w, 2800/h));           // opening view: ~2.8 km of the park (about 40 blocks)
     if (!isFinite(zoom)||!isFinite(zoomAll)) return;
     fitAll=zoomAll;
     // shift the centre so the section sits in the visible area beside/above the panel
@@ -316,9 +323,10 @@ function applyView(first, animate=true){
     if(!cam) return;
   }
   if (view==='grid' && fitAll) map.setMinZoom(Math.max(10,fitAll-0.05));
+  if (limitsOnly) return;
   const opts={...cam,bearing, duration: (animate && !matchMedia('(prefers-reduced-motion: reduce)').matches)?900:0};
   map.easeTo(opts);
-  document.getElementById('north').style.transform=`rotate(${-bearing}deg)`;
+  document.getElementById('north').style.transform=`rotate(${northDeg()}deg)`;
   ensureSegments();
 }
 // keep the view on the park: the centre may move along the park axis
@@ -330,11 +338,45 @@ function toAxis(ll){ const k=Math.cos(SECTION_CENTER[1]*Math.PI/180);
 function fromAxis(al,ac){ const k=Math.cos(SECTION_CENTER[1]*Math.PI/180);
   const dx=al*Math.sin(AX.a)+ac*Math.cos(AX.a), dy=al*Math.cos(AX.a)-ac*Math.sin(AX.a);
   return [SECTION_CENTER[0]+dx/(k*111320), SECTION_CENTER[1]+dy/110540]; }
+// ---- stretched east–west view ------------------------------------------------------------
+// Every coordinate is re-drawn with its distance from the park's centre line multiplied by K
+// (measured across the street grid); distances along the park are unchanged.
+const STRETCH=1.6; let K=1;
+function sPt(p,k){ const [al,ac]=toAxis({lng:p[0],lat:p[1]}); return fromAxis(al,ac*k); }
+const mapC=(c,fn)=> typeof c[0]==='number' ? fn(c) : c.map(x=>mapC(x,fn));
+function sGeom(g,k){ if(!g) return g; if(g.type==='GeometryCollection') return {...g,geometries:g.geometries.map(x=>sGeom(x,k))};
+  return {...g,coordinates:mapC(g.coordinates,p=>sPt(p,k))}; }
+const sFC=(fc,k)=>({...fc,features:fc.features.map(f=>({...f,geometry:sGeom(f.geometry,k)}))});
+const segCoords=sg=> K===1 ? sg.coords : sg.coords.map(p=>sPt(p,K));
+function northDeg(){ const a=GRID*Math.PI/180; return Math.atan2(-K*Math.sin(a),Math.cos(a))*180/Math.PI; }
+const ORIG={}; // original GeoJSON per source, fetched once when first needed
+async function setShape(on){
+  const k=on?STRETCH:1; if(k===K) return;
+  const ids=Object.keys(style.sources).filter(id=>style.sources[id].type==='geojson');
+  await Promise.all(ids.map(async id=>{
+    if(!ORIG[id]){ const d=style.sources[id].data; ORIG[id]= typeof d==='string' ? await fetch(d).then(r=>r.json()) : d; }
+  }));
+  const c=map.getCenter(), [al,ac]=toAxis(c), z=map.getZoom(), oldK=K;
+  K=k;
+  ids.forEach(id=>map.getSource(id).setData(K===1?ORIG[id]:sFC(ORIG[id],K)));
+  SEGS.forEach(sg=>['relief','canopy'].forEach(kind=>{ const src=map.getSource(kind+'-'+sg.i);
+    if(src) src.updateImage({url:src.url||(kind==='relief'?D('relief_'+sg.i+'_'+src._az+'.webp'):D('trees_'+sg.i+'_'+src._az+'.webp')),coordinates:segCoords(sg)}); }));
+  clamping=true; map.jumpTo({center:fromAxis(al,ac*K/oldK),zoom:z}); clamping=false;
+  applyView(false,false,true);
+  document.querySelector('.maplibregl-ctrl-scale').style.display = K===1 ? '' : 'none';
+  document.getElementById('stretch-note').hidden = K===1;
+  document.getElementById('north').style.transform=`rotate(${northDeg()}deg)`;
+  try{ localStorage.setItem('rp-shape', on?'stretch':'true'); }catch(e){}
+}
+document.querySelectorAll('input[name=shape]').forEach(r=>r.addEventListener('change',e=>setShape(e.target.value==='stretch')));
+map.on('load',()=>{ let v=null; try{ v=localStorage.getItem('rp-shape'); }catch(e){}
+  if(v==='stretch'){ document.getElementById('shape-stretch').checked=true; setShape(true); } });
+
 let clamping=false;
 map.on('move',()=>{
   if(clamping) return;
   const [al,ac]=toAxis(map.getCenter());
-  const cal=Math.max(-AX.half,Math.min(AX.half,al)), cac=Math.max(-AX.across,Math.min(AX.across,ac));
+  const cal=Math.max(-AX.half,Math.min(AX.half,al)), cac=Math.max(-AX.across*K,Math.min(AX.across*K,ac));
   if(cal!==al||cac!==ac){ clamping=true; map.jumpTo({center:fromAxis(cal,cac)}); clamping=false; }
 });
 // refit when the map's own size changes (first layout, rotation, window resize) until the reader moves the map
@@ -351,7 +393,7 @@ function segLayers(kind){ SEGS.forEach(sg=>{ const id=kind+'-'+sg.i; if(map.getL
 // relief and canopy come in five sections; each loads when it nears the view
 let SEGS=[];
 const currentAz=()=> RELIEF.gridPortrait;
-function segBounds(sg){ const xs=sg.coords.map(c=>c[0]), ys=sg.coords.map(c=>c[1]); return [Math.min(...xs),Math.min(...ys),Math.max(...xs),Math.max(...ys)]; }
+function segBounds(sg){ const cc=segCoords(sg), xs=cc.map(c=>c[0]), ys=cc.map(c=>c[1]); return [Math.min(...xs),Math.min(...ys),Math.max(...xs),Math.max(...ys)]; }
 function ensureSegments(){
   if(!SEGS.length) return;
   const b=map.getBounds(); const pad=0.01;
@@ -361,17 +403,17 @@ function ensureSegments(){
     const [w,s_,e,n]=segBounds(sg);
     const near=!(e<vb[0]||w>vb[2]||n<vb[1]||s_>vb[3]);
     if(near && !map.getSource('canopy-'+sg.i)){
-      map.addSource('canopy-'+sg.i,{type:'image',url:D('trees_'+sg.i+'_'+az+'.webp'),coordinates:sg.coords});
+      map.addSource('canopy-'+sg.i,{type:'image',url:D('trees_'+sg.i+'_'+az+'.webp'),coordinates:segCoords(sg)});
       map.getSource('canopy-'+sg.i)._az=az;
       map.addLayer({id:'canopy-'+sg.i,type:'raster',source:'canopy-'+sg.i,layout:{visibility:vis.canopy?'visible':'none'},paint:{'raster-opacity':['interpolate',['linear'],['zoom'],15,TREE_OPACITY,18,0.3],'raster-fade-duration':0}},'canopy-anchor');
-      map.addSource('relief-'+sg.i,{type:'image',url:D('relief_'+sg.i+'_'+az+'.webp'),coordinates:sg.coords});
+      map.addSource('relief-'+sg.i,{type:'image',url:D('relief_'+sg.i+'_'+az+'.webp'),coordinates:segCoords(sg)});
       map.getSource('relief-'+sg.i)._az=az;
       map.addLayer({id:'relief-'+sg.i,type:'raster',source:'relief-'+sg.i,layout:{visibility:vis.relief?'visible':'none'},paint:{'raster-opacity':RELIEF_OPACITY,'raster-fade-duration':0}},'relief-anchor');
     }
     const src=map.getSource('relief-'+sg.i);
-    if(src && src._az!==az){ src._az=az; src.updateImage({url:D('relief_'+sg.i+'_'+az+'.webp'),coordinates:sg.coords}); }
+    if(src && src._az!==az){ src._az=az; src.updateImage({url:D('relief_'+sg.i+'_'+az+'.webp'),coordinates:segCoords(sg)}); }
     const ts=map.getSource('canopy-'+sg.i);
-    if(ts && ts._az!==az){ ts._az=az; ts.updateImage({url:D('trees_'+sg.i+'_'+az+'.webp'),coordinates:sg.coords}); }
+    if(ts && ts._az!==az){ ts._az=az; ts.updateImage({url:D('trees_'+sg.i+'_'+az+'.webp'),coordinates:segCoords(sg)}); }
   });
 }
 fetch(D('segments.json')).then(r=>r.json()).then(j=>{SEGS=j; if(map.loaded()) ensureSegments();});
@@ -416,7 +458,7 @@ fetch(D('places.json')).then(r=>r.json()).then(pl=>{
     return `<li class="grp">${a}th – ${b}th St</li>`+rows.map(p=>`<li><button data-x="${p.lon}" data-y="${p.lat}"><span class="k">${p.name===p.label?"":esc(p.label)}</span><span>${esc(p.name)}</span><span class="near">W ${p.near}</span></button></li>`).join('');
   }).join('');
   ul.addEventListener('click',e=>{const b=e.target.closest('button'); if(!b)return;
-    map.easeTo({center:[+b.dataset.x,+b.dataset.y],zoom:17.4,duration:matchMedia('(prefers-reduced-motion: reduce)').matches?0:800});});
+    map.easeTo({center:sPt([+b.dataset.x,+b.dataset.y],K),zoom:17.4,duration:matchMedia('(prefers-reduced-motion: reduce)').matches?0:800});});
 });
 })();
 </script>
