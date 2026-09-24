@@ -23,8 +23,8 @@ html,body{margin:0;padding:0}
 :root[data-theme="dark"]{--paper:#151A17;--ink:#E7ECE6;--muted:#A3AEA5;--rule:#34403A;--panel:#1B221EF0;--accent:#8DBB7E;--water:#86B6C6;--focus:#7FB3F0;color-scheme:dark}
 html,body{height:100%}
 body{background:#DEDED8;color:var(--ink);font:14px/1.45 var(--body);overflow:hidden}
-/* on wide monitors the map stops at 1440px and sits centred */
-.stage{position:relative;height:100%;max-width:1440px;margin:0 auto;box-shadow:0 0 0 1px #C9C9C2,0 0 24px #0000000f}
+/* on wide monitors the map stops at 1280px and sits centred */
+.stage{position:relative;height:100%;max-width:1280px;margin:0 auto;box-shadow:0 0 0 1px #C9C9C2,0 0 24px #0000000f}
 #map{position:absolute;inset:0;background:#ECECE8}
 .panel{position:absolute;z-index:2;top:calc(12px + env(safe-area-inset-top,0px));left:12px;width:min(300px,calc(100% - 24px));max-height:calc(100% - 24px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));overflow:auto;background:var(--panel);backdrop-filter:blur(6px);border:1px solid var(--rule);border-radius:6px;box-shadow:0 2px 14px #0000001a;display:flex;flex-direction:column}
 .head{padding:14px 16px 10px;border-bottom:1px solid var(--rule)}
