@@ -262,7 +262,7 @@ const style = {
 
 const narrow = () => innerWidth < innerHeight;
 // "Street grid" view: park axis vertical on portrait screens, horizontal (river at top) on landscape screens
-const gridBearing = () => narrow() ? GRID : GRID - 90;
+const gridBearing = () => GRID; // park always runs up the screen, on every screen shape
 
 const map = new maplibregl.Map({container:'map',style,bounds:SLICE,fitBoundsOptions:{padding:40},
   maxBounds:[[-74.2,40.6],[-73.7,41.0]],minZoom:10,maxZoom:19,attributionControl:false,pitchWithRotate:false,dragRotate:false,touchPitch:false});
@@ -302,7 +302,7 @@ function applyView(first, animate=true){
     // fit the whole park along its own axis (59th–158th ≈ 7.6 km)
     const w=map.getContainer().clientWidth-padL-pad, h=map.getContainer().clientHeight-2*pad-(innerWidth>560?0:innerHeight*0.42);
     const [along,across]=[7900,1300];
-    const [spanX,spanY]= narrow()? [across,along] : [along,across];
+    const [spanX,spanY]= [across,along];
     const mpp=Math.max(spanX/w, spanY/h);
     const zoom=Math.log2(78271.517*Math.cos(SECTION_CENTER[1]*Math.PI/180)/mpp);
     // shift the centre so the section sits in the visible area beside/above the panel
@@ -342,7 +342,7 @@ function segLayers(kind){ SEGS.forEach(sg=>{ const id=kind+'-'+sg.i; if(map.getL
 
 // relief and canopy come in five sections; each loads when it nears the view
 let SEGS=[];
-const currentAz=()=> narrow() ? RELIEF.gridPortrait : RELIEF.gridLandscape;
+const currentAz=()=> RELIEF.gridPortrait;
 function segBounds(sg){ const xs=sg.coords.map(c=>c[0]), ys=sg.coords.map(c=>c[1]); return [Math.min(...xs),Math.min(...ys),Math.max(...xs),Math.max(...ys)]; }
 function ensureSegments(){
   if(!SEGS.length) return;
@@ -355,7 +355,7 @@ function ensureSegments(){
     if(near && !map.getSource('canopy-'+sg.i)){
       map.addSource('canopy-'+sg.i,{type:'image',url:D('trees_'+sg.i+'_'+az+'.webp'),coordinates:sg.coords});
       map.getSource('canopy-'+sg.i)._az=az;
-      map.addLayer({id:'canopy-'+sg.i,type:'raster',source:'canopy-'+sg.i,layout:{visibility:vis.canopy?'visible':'none'},paint:{'raster-opacity':TREE_OPACITY,'raster-fade-duration':0}},'canopy-anchor');
+      map.addLayer({id:'canopy-'+sg.i,type:'raster',source:'canopy-'+sg.i,layout:{visibility:vis.canopy?'visible':'none'},paint:{'raster-opacity':['interpolate',['linear'],['zoom'],15,TREE_OPACITY,18,0.45],'raster-fade-duration':0}},'canopy-anchor');
       map.addSource('relief-'+sg.i,{type:'image',url:D('relief_'+sg.i+'_'+az+'.webp'),coordinates:sg.coords});
       map.getSource('relief-'+sg.i)._az=az;
       map.addLayer({id:'relief-'+sg.i,type:'raster',source:'relief-'+sg.i,layout:{visibility:vis.relief?'visible':'none'},paint:{'raster-opacity':RELIEF_OPACITY,'raster-fade-duration':0}},'relief-anchor');
@@ -405,12 +405,12 @@ document.getElementById('legend').innerHTML=L.map(([s,t])=>`<dt>${s}</dt><dd sty
 
 // text alternative: places list, grouped by street band, nearest cross street shown
 fetch(D('places.json')).then(r=>r.json()).then(pl=>{
-  const bands=[[59,79],[80,99],[100,119],[120,139],[140,158]];
+  const bands=[[140,158],[120,139],[100,119],[80,99],[59,79]]; // north to south, like the map
   const ul=document.getElementById('list'); const esc=t=>String(t).replace(/[<&]/g,c=>c==='<'?'&lt;':'&amp;');
   ul.innerHTML=bands.map(([a,b])=>{
     const rows=pl.filter(p=>p.near>=a&&p.near<=b);
     if(!rows.length) return '';
-    return `<li class="grp">${a}th – ${b}th St</li>`+rows.map(p=>`<li><button data-x="${p.lon}" data-y="${p.lat}"><span class="k">${esc(p.label)}</span><span>${esc(p.name)}</span><span class="near">W ${p.near}</span></button></li>`).join('');
+    return `<li class="grp">${a}th – ${b}th St</li>`+rows.map(p=>`<li><button data-x="${p.lon}" data-y="${p.lat}"><span class="k">${p.name===p.label?"":esc(p.label)}</span><span>${esc(p.name)}</span><span class="near">W ${p.near}</span></button></li>`).join('');
   }).join('');
   ul.addEventListener('click',e=>{const b=e.target.closest('button'); if(!b)return;
     map.easeTo({center:[+b.dataset.x,+b.dataset.y],zoom:17.4,duration:matchMedia('(prefers-reduced-motion: reduce)').matches?0:800});});
