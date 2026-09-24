@@ -22,8 +22,10 @@ html,body{margin:0;padding:0}
 }
 :root[data-theme="dark"]{--paper:#151A17;--ink:#E7ECE6;--muted:#A3AEA5;--rule:#34403A;--panel:#1B221EF0;--accent:#8DBB7E;--water:#86B6C6;--focus:#7FB3F0;color-scheme:dark}
 html,body{height:100%}
-body{background:var(--paper);color:var(--ink);font:14px/1.45 var(--body);overflow:hidden}
-#map{position:absolute;inset:0;background:#C6D8DE}
+body{background:#DEDED8;color:var(--ink);font:14px/1.45 var(--body);overflow:hidden}
+/* on wide monitors the map stops at 1440px and sits centred */
+.stage{position:relative;height:100%;max-width:1440px;margin:0 auto;box-shadow:0 0 0 1px #C9C9C2,0 0 24px #0000000f}
+#map{position:absolute;inset:0;background:#ECECE8}
 .panel{position:absolute;z-index:2;top:calc(12px + env(safe-area-inset-top,0px));left:12px;width:min(300px,calc(100% - 24px));max-height:calc(100% - 24px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));overflow:auto;background:var(--panel);backdrop-filter:blur(6px);border:1px solid var(--rule);border-radius:6px;box-shadow:0 2px 14px #0000001a;display:flex;flex-direction:column}
 .head{padding:14px 16px 10px;border-bottom:1px solid var(--rule)}
 h1{font:600 28px/1.05 var(--display);letter-spacing:0;margin:0;text-wrap:balance}
@@ -59,6 +61,7 @@ details[open] summary::before{content:"▾ ";}
 </style>
 </head>
 <body>
+<div class="stage">
 <div id="map" role="region" aria-label="Map of Riverside Park, West 59th to West 158th Street. Focus the map and use arrow keys to pan, plus and minus to zoom."></div>
 
 <div class="north" id="north" role="img" aria-label="North arrow"><svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><path d="M11 2 L15 13 L11 11 L7 13Z" fill="#2A332E"/><text x="11" y="21" text-anchor="middle" font-size="7" font-family="system-ui,sans-serif" font-weight="600" fill="#2A332E">N</text></svg></div>
@@ -91,6 +94,7 @@ details[open] summary::before{content:"▾ ";}
     <p class="note">Relief and canopy from the NYC 2017 LiDAR survey (bare-earth ground, 3 ft grid; canopy is first-return height above ground). Park boundary: NYC Parks. Paths and amenities: © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors. Amenity data is incomplete and not yet checked on the ground.</p>
   </section>
 </aside>
+</div>
 
 <script src="lib/maplibre-gl.js"></script>
 <script>
@@ -253,6 +257,7 @@ const style = {
 
 
 const narrow = () => innerWidth < innerHeight;
+const stageW = () => map.getContainer().clientWidth;  // the map's width, not the window's
 // "Street grid" view: park axis vertical on portrait screens, horizontal (river at top) on landscape screens
 const gridBearing = () => GRID; // park always runs up the screen, on every screen shape
 
@@ -289,11 +294,11 @@ map.on('load',async()=>{
 let view='grid', fitAll=null;
 function applyView(first, animate=true){
   const bearing = view==='grid' ? gridBearing() : 0;
-  const padL = innerWidth>560?330:24, pad=24;
+  const wide = stageW()>560, padL = wide?330:24, pad=24;
   let cam;
   if (view==='grid'){
     // fit the whole park along its own axis (59th–158th ≈ 7.6 km)
-    const w=map.getContainer().clientWidth-padL-pad, h=map.getContainer().clientHeight-2*pad-(innerWidth>560?0:innerHeight*0.42);
+    const w=map.getContainer().clientWidth-padL-pad, h=map.getContainer().clientHeight-2*pad-(wide?0:innerHeight*0.42);
     const [along,across]=[7900,1300];
     const [spanX,spanY]= [across,along];
     // the container can be zero-sized while the page is still being laid out (e.g. inside an embedding frame):
@@ -305,7 +310,7 @@ function applyView(first, animate=true){
     if (!isFinite(zoom)||!isFinite(zoomAll)) return;
     fitAll=zoomAll;
     // shift the centre so the section sits in the visible area beside/above the panel
-    cam={center:SECTION_CENTER, zoom, offset:[(padL-pad)/2, innerWidth>560?0:-(innerHeight*0.42)/2]};
+    cam={center:SECTION_CENTER, zoom, offset:[(padL-pad)/2, wide?0:-(innerHeight*0.42)/2]};
   } else {
     cam = map.cameraForBounds(SLICE,{padding:{top:pad,bottom:pad,left:padL,right:pad},bearing});
     if(!cam) return;
