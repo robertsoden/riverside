@@ -1,0 +1,400 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Riverside Park, Manhattan (West 59th–158th Street): an interactive map with LiDAR relief, individual trees, paths, steps and park amenities.">
+<title>Riverside Park Map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Sans:ital,wght@0,400;0,500;0,600;1,400&family=Source+Serif+4:opsz,wght@8..60,600&display=swap">
+<link rel="stylesheet" href="lib/maplibre-gl.css">
+<style>
+html,body{margin:0;padding:0}
+:root{
+  --paper:#F6F7F3; --ink:#1F2A24; --muted:#5B665E; --rule:#D8DDD2; --panel:#FFFFFFEE;
+  --accent:#3E6B3A; --water:#3F6E7F; --focus:#1E5FA8;
+  --display:"Source Serif 4",Georgia,"Times New Roman",serif;
+  --body:"Fira Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){--paper:#151A17;--ink:#E7ECE6;--muted:#A3AEA5;--rule:#34403A;--panel:#1B221EF0;--accent:#8DBB7E;--water:#86B6C6;--focus:#7FB3F0;color-scheme:dark}
+}
+:root[data-theme="dark"]{--paper:#151A17;--ink:#E7ECE6;--muted:#A3AEA5;--rule:#34403A;--panel:#1B221EF0;--accent:#8DBB7E;--water:#86B6C6;--focus:#7FB3F0;color-scheme:dark}
+html,body{height:100%}
+body{background:var(--paper);color:var(--ink);font:14px/1.45 var(--body);overflow:hidden}
+#map{position:absolute;inset:0;background:#C6D8DE}
+.panel{position:absolute;z-index:2;top:calc(12px + env(safe-area-inset-top,0px));left:12px;width:min(300px,calc(100% - 24px));max-height:calc(100% - 24px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));overflow:auto;background:var(--panel);backdrop-filter:blur(6px);border:1px solid var(--rule);border-radius:6px;box-shadow:0 2px 14px #0000001a;display:flex;flex-direction:column}
+.head{padding:14px 16px 10px;border-bottom:1px solid var(--rule)}
+h1{font:600 28px/1.05 var(--display);letter-spacing:0;margin:0;text-wrap:balance}
+.sub{margin:6px 0 0;color:var(--muted);font-size:12.5px}
+.tag{display:inline-block;font:600 10.5px/1 var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--accent);border:1px solid currentColor;border-radius:3px;padding:3px 5px;margin-top:8px}
+section{padding:10px 16px;border-bottom:1px solid var(--rule);display:grid;gap:8px}
+section:last-child{border-bottom:0}
+h2{font:600 11px/1 var(--body);letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin:2px 0 0}
+button:focus-visible,summary:focus-visible,input:focus-visible,.list button:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.toggles{display:flex;flex-wrap:wrap;gap:6px 14px}
+.toggles label{display:flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer}
+.legend{display:grid;grid-template-columns:28px 1fr;gap:5px 8px;align-items:center;font-size:12.5px;margin:0}
+.legend svg{display:block}
+details summary{cursor:pointer;font:600 11px/1 var(--body);letter-spacing:.09em;text-transform:uppercase;color:var(--muted);list-style:none;padding:2px 0}
+details summary::before{content:"▸ ";}
+details[open] summary::before{content:"▾ ";}
+.list{list-style:none;margin:6px 0 0;padding:0;display:grid;gap:1px;font-size:12.5px}
+.list button{all:unset;display:flex;gap:8px;align-items:baseline;width:100%;box-sizing:border-box;padding:4px 4px;border-radius:3px;cursor:pointer}
+.list button:hover{background:#7f8f7f1f}
+.list .k{flex:0 0 72px;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.05em}
+.note{font-size:11.5px;color:var(--muted);margin:0}
+.north{position:absolute;z-index:2;right:12px;top:calc(92px + env(safe-area-inset-top,0px));width:34px;height:34px;border-radius:50%;background:#FFFFFFE6;box-shadow:0 0 0 2px #0000001a;display:grid;place-items:center;pointer-events:none}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips button{font:500 12px var(--body);font-variant-numeric:tabular-nums;padding:5px 9px;border:1px solid var(--rule);border-radius:999px;background:transparent;color:var(--ink);cursor:pointer}
+.chips button:hover{border-color:var(--accent);color:var(--accent)}
+.list .grp{font:600 10.5px/1 var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:10px 4px 4px}
+.list .near{margin-left:auto;color:var(--muted);font-size:11px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.note a{color:inherit}
+.maplibregl-ctrl-attrib{font:11px var(--body)}
+.maplibregl-ctrl-group button:focus-visible{outline:2px solid var(--focus)}
+@media (max-width:560px){
+  .panel{top:auto;bottom:calc(10px + env(safe-area-inset-bottom,0px));max-height:42%}
+  .legend-sec{display:none}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div id="map" role="region" aria-label="Map of Riverside Park, West 59th to West 158th Street. Focus the map and use arrow keys to pan, plus and minus to zoom."></div>
+
+<div class="north" id="north" role="img" aria-label="North arrow"><svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><path d="M11 2 L15 13 L11 11 L7 13Z" fill="#2A332E"/><text x="11" y="21" text-anchor="middle" font-size="7" font-family="system-ui,sans-serif" font-weight="600" fill="#2A332E">N</text></svg></div>
+
+<aside class="panel" aria-label="Map controls and legend">
+  <div class="head">
+    <h1>Riverside Park</h1>
+    <p class="sub">West 59th – West 158th Street · Manhattan</p>
+    <span class="tag">Draft</span>
+  </div>
+  <section>
+    <h2>Layers</h2>
+    <div class="toggles">
+      <label><input type="checkbox" id="t-relief" checked> Relief</label>
+      <label><input type="checkbox" id="t-canopy" checked> Tree canopy</label>
+    </div>
+  </section>
+  <section>
+    <h2 id="jump-h">Go to street</h2>
+    <div class="chips" role="group" aria-labelledby="jump-h" id="jump"></div>
+  </section>
+  <section class="legend-sec">
+    <h2>Legend</h2>
+    <dl class="legend" id="legend"></dl>
+    <p class="note" id="blossom-note" hidden>Pink along Cherry Walk: cherry blossom season (late March to mid May).</p>
+  </section>
+  <section>
+    <details id="amen">
+      <summary>Places in the park</summary>
+      <ul class="list" id="list"></ul>
+    </details>
+  </section>
+  <section>
+    <p class="note">Relief and canopy from the NYC 2017 LiDAR survey (bare-earth ground, 3 ft grid; canopy is first-return height above ground). Park boundary: NYC Parks. Paths and amenities: © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors. Amenity data is incomplete and not yet checked on the ground.</p>
+  </section>
+</aside>
+
+<script src="lib/maplibre-gl.js"></script>
+<script>
+(function(){
+const BASE = location.href.replace(/[#?].*$/,'').replace(/[^/]*$/,'');
+const D = n => BASE + 'data/' + n;
+const SLICE = [[-74.0009,40.7697],[-73.9435,40.8362]]; // whole frame, 59th–158th
+const STREETS = {59:[-73.99365,40.77296],72:[-73.987,40.78071],86:[-73.98036,40.78995],96:[-73.97524,40.79611],110:[-73.96818,40.80494],125:[-73.96106,40.81868],145:[-73.95206,40.8271],153:[-73.94978,40.8327]};
+const GRID = 29; // Manhattan street grid, degrees east of true north (approx.)
+
+// palette — map is a single deliberate light look
+// Map palette v3 — contrast and colour-vision tests in the project's design-system doc
+const C = {
+  water:'#BFD5DD', land:'#F2F2EF', park:'#DDE7D0', lawn:'#CFE2BC', wood:'#C4D9B0', garden:'#DDE3B0',
+  pitch:'#B7D494', pitchLine:'#F7FAF2', play:'#F8E3B8', playLine:'#C9974E', dog:'#D9C4A6', dogLine:'#A88A64',
+  bldg:'#E4E2DC', bldgLine:'#D3D0C8', road:'#FFFFFF', roadCase:'#DBD8D1',
+  hwy:'#F2E2B6', hwyCase:'#BCA46A', path:'#FFFFFF', pathCase:'#93A185', cycle:'#2E7867',
+  steps:'#5E4B39', wall:'#5E5A50', bound:'#587E43', contour:'#7E8C6E',
+  label:'#2A332E', street:'#4E4C45', halo:'#F4F5F0', waterLabel:'#214A58', parkLabel:'#243F1D',
+  waterDeep:'#AFC9D4', waterLine:'#7FA3B2', bldgShadow:'#8F8B82', bridgeCase:'#7E7A70', rail:'#6E6B63', hood:'#6F6D66'
+};
+const ICONS=['monument','playground','toilets','water','dogrun','access','viewpoint'];
+// relief lit from the screen's upper left for each orientation (true azimuths)
+const SECTION_CENTER=[-73.97218,40.80293]; // frame centre
+const RELIEF={gridPortrait:344, gridLandscape:254};
+const RELIEF_OPACITY=0.75; // softened from 1.0 at Robert's request (0.6 was too faint)
+const TREE_OPACITY=0.8; // softened from 1.0 at Robert's request
+
+const style = {
+  version:8,
+  glyphs: BASE + 'fonts/{fontstack}/{range}.pbf',
+  sources:{
+    land:{type:'geojson',data:D('land.geojson')},
+    deepwater:{type:'geojson',data:D('deepwater.geojson')},
+    waterlines:{type:'geojson',data:D('waterlines.geojson')},
+    landmarks:{type:'geojson',data:D('landmarks.geojson')},
+    hoods:{type:'geojson',data:D('hoods.geojson')},
+    rail:{type:'geojson',data:D('rail.geojson')},
+    pier:{type:'geojson',data:D('pier.geojson')},
+    boundary:{type:'geojson',data:D('boundary.geojson')},
+    park:{type:'geojson',data:D('park.geojson')},
+    green:{type:'geojson',data:D('green.geojson')},
+    wood:{type:'geojson',data:D('wood.geojson')},
+    garden:{type:'geojson',data:D('garden.geojson')},
+    pitch:{type:'geojson',data:D('pitch.geojson')},
+    playground:{type:'geojson',data:D('playground.geojson')},
+    dogpark:{type:'geojson',data:D('dogpark.geojson')},
+    water:{type:'geojson',data:D('water.geojson')},
+    mask:{type:'geojson',data:D('mask.geojson')},
+    city_wall:{type:'geojson',data:D('city_wall.geojson')},
+    empty:{type:'geojson',data:{type:'FeatureCollection',features:[]}},
+    focus:{type:'geojson',data:D('focus.geojson')},
+    parkpt:{type:'geojson',data:{type:'FeatureCollection',features:[{type:'Feature',properties:{},geometry:{type:'Point',coordinates:[-73.9716,40.8030]}}]}},
+    riverlabel:{type:'geojson',data:{type:'FeatureCollection',features:[{type:'Feature',properties:{},geometry:{type:'Point',coordinates:[-73.97460,40.80421]}}]}},
+    building:{type:'geojson',data:D('building.geojson')},
+    road:{type:'geojson',data:D('road.geojson')},
+    path:{type:'geojson',data:D('path.geojson')},
+    steps:{type:'geojson',data:D('steps.geojson')},
+    poi:{type:'geojson',data:D('poi.geojson')},
+    area_label:{type:'geojson',data:D('area_label.geojson')},
+    street_label:{type:'geojson',data:D('street_label.geojson')},
+    street_pts:{type:'geojson',data:D('street_label.geojson')}
+  },
+  layers:[
+    {id:'bg',type:'background',paint:{'background-color':C.water}},
+    {id:'deep',type:'fill',source:'deepwater',paint:{'fill-color':C.waterDeep,'fill-opacity':['match',['get','i'],0,0.45,0.8]}},
+    {id:'waterline',type:'line',source:'waterlines',paint:{'line-color':C.waterLine,'line-opacity':['match',['get','i'],0,0.75,1,0.5,2,0.32,0.2],'line-width':['interpolate',['linear'],['zoom'],13,0.5,17,1.1]}},
+    {id:'land',type:'fill',source:'land',paint:{'fill-color':C.land}},
+    {id:'pier',type:'fill',source:'pier',paint:{'fill-color':C.land,'fill-outline-color':'#C2BFB6'}},
+    {id:'park-other',type:'fill',source:'park',paint:{'fill-color':C.park}},
+    {id:'park',type:'fill',source:'boundary',paint:{'fill-color':C.park}},
+    {id:'lawn',type:'fill',source:'green',paint:{'fill-color':C.lawn}},
+    {id:'wood',type:'fill',source:'wood',paint:{'fill-color':C.wood}},
+    {id:'garden',type:'fill',source:'garden',paint:{'fill-color':C.garden}},
+    {id:'garden-tex',type:'fill',source:'garden',minzoom:15,filter:['!=',['get','meadow'],true],paint:{'fill-pattern':'p-garden'}},
+    {id:'meadow-tex',type:'fill',source:'garden',minzoom:14.5,filter:['==',['get','meadow'],true],paint:{'fill-pattern':'p-meadow'}},
+    {id:'dog',type:'fill',source:'dogpark',paint:{'fill-color':C.dog}},
+    {id:'dog-line',type:'line',source:'dogpark',paint:{'line-color':C.dogLine,'line-width':0.9,'line-dasharray':[3,2]}},
+    {id:'pitch',type:'fill',source:'pitch',paint:{'fill-color':C.pitch,'fill-outline-color':C.pitchLine}},
+    {id:'play',type:'fill',source:'playground',paint:{'fill-color':C.play}},
+    {id:'play-line',type:'line',source:'playground',paint:{'line-color':C.playLine,'line-width':0.9}},
+    {id:'water-f',type:'fill',source:'water',filter:['!=',['get','name'],'Hudson River'],paint:{'fill-color':C.water}},
+    {id:'rail-tunnel',type:'line',source:'rail',filter:['==',['get','tunnel'],'yes'],minzoom:14,paint:{'line-color':C.rail,'line-opacity':0.55,'line-width':['interpolate',['linear'],['zoom'],14,0.8,18,2],'line-dasharray':[5,4]}},
+    {id:'relief-anchor',type:'line',source:'empty'},
+    {id:'canopy-anchor',type:'line',source:'empty'},
+    {id:'bldg-shadow-0',type:'fill',source:'building',filter:['==',['get','hc'],0],paint:{'fill-color':C.bldgShadow,'fill-opacity':0.45,'fill-translate-anchor':'viewport','fill-translate':['interpolate',['linear'],['zoom'],14,['literal',[0.6,0.6]],18,['literal',[4,4]]]}},
+    {id:'bldg-shadow-1',type:'fill',source:'building',filter:['==',['get','hc'],1],paint:{'fill-color':C.bldgShadow,'fill-opacity':0.45,'fill-translate-anchor':'viewport','fill-translate':['interpolate',['linear'],['zoom'],14,['literal',[1.2,1.2]],18,['literal',[9,9]]]}},
+    {id:'bldg-shadow-2',type:'fill',source:'building',filter:['==',['get','hc'],2],paint:{'fill-color':C.bldgShadow,'fill-opacity':0.45,'fill-translate-anchor':'viewport','fill-translate':['interpolate',['linear'],['zoom'],14,['literal',[2.2,2.2]],18,['literal',[16,16]]]}},
+    {id:'bldg',type:'fill',source:'building',paint:{'fill-color':C.bldg,'fill-outline-color':C.bldgLine}},
+    {id:'road-case',type:'line',source:'road',filter:['all',['!=',['get','kind'],'highway'],['!=',['get','bridge'],true]],layout:{'line-cap':'round','line-join':'round'},
+      paint:{'line-color':C.roadCase,'line-width':['interpolate',['exponential',1.6],['zoom'],14,['match',['get','kind'],'major',3,'minor',2,1],18,['match',['get','kind'],'major',22,'minor',16,6]]}},
+    {id:'hwy-case',type:'line',source:'road',filter:['all',['==',['get','kind'],'highway'],['!=',['get','bridge'],true]],layout:{'line-cap':'round','line-join':'round'},
+      paint:{'line-color':C.hwyCase,'line-width':['interpolate',['exponential',1.6],['zoom'],14,3.5,18,20]}},
+    {id:'road',type:'line',source:'road',filter:['all',['!=',['get','kind'],'highway'],['!=',['get','bridge'],true]],layout:{'line-cap':'round','line-join':'round'},
+      paint:{'line-color':C.road,'line-width':['interpolate',['exponential',1.6],['zoom'],14,['match',['get','kind'],'major',2,'minor',1.2,0.5],18,['match',['get','kind'],'major',20,'minor',14,4.5]]}},
+    {id:'hwy',type:'line',source:'road',filter:['all',['==',['get','kind'],'highway'],['!=',['get','bridge'],true]],layout:{'line-cap':'round','line-join':'round'},
+      paint:{'line-color':C.hwy,'line-width':['interpolate',['exponential',1.6],['zoom'],14,2.5,18,17]}},
+    {id:'path-case',type:'line',source:'path',filter:['all',['!=',['get','kind'],'sidewalk'],['!=',['get','bridge'],true]],minzoom:14.5,layout:{'line-cap':'round','line-join':'round'},
+      paint:{'line-color':C.pathCase,'line-opacity':0.8,'line-width':['interpolate',['linear'],['zoom'],15,['case',['==',['get','major'],true],2.6,1.6],18,['case',['==',['get','major'],true],8,4.8]]}},
+    {id:'path',type:'line',source:'path',filter:['all',['==',['get','kind'],'foot'],['!=',['get','bridge'],true]],minzoom:14.5,layout:{'line-cap':'round','line-join':'round'},
+      paint:{'line-color':C.path,'line-width':['interpolate',['linear'],['zoom'],15,['case',['==',['get','major'],true],1.6,0.8],18,['case',['==',['get','major'],true],6,3.4]]}},
+    {id:'cycle-case',type:'line',source:'path',filter:['all',['==',['get','kind'],'cycle'],['!=',['get','bridge'],true]],layout:{'line-cap':'round','line-join':'round'},
+      paint:{'line-color':'#FFFFFF','line-width':['interpolate',['linear'],['zoom'],14,2.4,18,6.5]}},
+    {id:'cycle',type:'line',source:'path',filter:['all',['==',['get','kind'],'cycle'],['!=',['get','bridge'],true]],layout:{'line-cap':'round','line-join':'round'},
+      paint:{'line-color':C.cycle,'line-width':['interpolate',['linear'],['zoom'],14,1.2,18,4]}},
+    {id:'blossom-glow',type:'line',source:'path',filter:['==',['get','name'],'Cherry Walk'],layout:{visibility:'none','line-cap':'round'},paint:{'line-color':'#F4B6C8','line-opacity':0.55,'line-blur':3,'line-width':['interpolate',['linear'],['zoom'],13,5,18,26]}},
+    {id:'blossom',type:'line',source:'path',filter:['==',['get','name'],'Cherry Walk'],layout:{visibility:'none','line-cap':'round'},paint:{'line-color':'#E8849F','line-width':['interpolate',['linear'],['zoom'],13,2.5,18,7],'line-dasharray':[0,2.2],'line-offset':['interpolate',['linear'],['zoom'],13,3,18,11]}},
+    {id:'steps',type:'line',source:'steps',minzoom:15,paint:{'line-color':C.steps,'line-width':['interpolate',['linear'],['zoom'],15,2.5,18,7],'line-dasharray':[0.25,0.25]}},
+    {id:'wall',type:'line',source:'city_wall',minzoom:15.5,paint:{'line-color':C.wall,'line-width':['interpolate',['linear'],['zoom'],15.5,0.6,18,1.6]}},
+    {id:'bridge-shadow',type:'line',source:'road',filter:['==',['get','bridge'],true],minzoom:14,layout:{'line-cap':'butt','line-join':'round'},
+      paint:{'line-color':C.bldgShadow,'line-opacity':0.5,'line-blur':2,'line-translate-anchor':'viewport','line-translate':['interpolate',['linear'],['zoom'],14,['literal',[1,1]],18,['literal',[5,5]]],'line-width':['interpolate',['exponential',1.6],['zoom'],14,3.5,18,22]}},
+    {id:'bridge-case',type:'line',source:'road',filter:['==',['get','bridge'],true],layout:{'line-cap':'butt','line-join':'round'},
+      paint:{'line-color':C.bridgeCase,'line-width':['interpolate',['exponential',1.6],['zoom'],14,['match',['get','kind'],'highway',4,'major',3.5,2.5],18,['match',['get','kind'],'highway',22,'major',24,17]]}},
+    {id:'bridge',type:'line',source:'road',filter:['==',['get','bridge'],true],layout:{'line-cap':'butt','line-join':'round'},
+      paint:{'line-color':['match',['get','kind'],'highway',C.hwy,C.road],'line-width':['interpolate',['exponential',1.6],['zoom'],14,['match',['get','kind'],'highway',2.5,'major',2,1.2],18,['match',['get','kind'],'highway',17,'major',20,14]]}},
+    {id:'path-bridge-case',type:'line',source:'path',filter:['==',['get','bridge'],true],minzoom:14.5,paint:{'line-color':C.bridgeCase,'line-width':['interpolate',['linear'],['zoom'],15,3,18,9]}},
+    {id:'path-bridge',type:'line',source:'path',filter:['==',['get','bridge'],true],minzoom:14.5,paint:{'line-color':['match',['get','kind'],'cycle',C.cycle,C.path],'line-width':['interpolate',['linear'],['zoom'],15,1.6,18,5.5]}},
+
+    {id:'water-label',type:'symbol',source:'riverlabel',
+      layout:{'symbol-placement':'point','text-field':'Hudson River','text-font':['SourceSerif4-Italic'],'text-size':['interpolate',['linear'],['zoom'],12,14,17,26],'text-rotation-alignment':'map','text-rotate':-61,'text-letter-spacing':0.18,'text-anchor':'center'},
+      paint:{'text-color':C.waterLabel,'text-opacity':0.9}},
+    {id:'hood',type:'symbol',source:'hoods',minzoom:12.5,maxzoom:17,
+      layout:{'text-field':['get','name'],'text-font':['FiraSans-Regular'],'text-size':['interpolate',['linear'],['zoom'],13,10,16,13],'text-letter-spacing':0.32,'text-rotation-alignment':'viewport','text-max-width':12,'text-padding':6},
+      paint:{'text-color':C.hood,'text-halo-color':C.land,'text-halo-width':1.5}},
+    {id:'road-label',type:'symbol',source:'road',filter:['all',['in',['get','kind'],['literal',['major','highway']]],['!=',['get','name'],'']],minzoom:14.5,
+      layout:{'symbol-placement':'line','text-field':['get','name'],'text-font':['FiraSans-Medium'],'text-size':['interpolate',['linear'],['zoom'],15,10.5,18,13],'symbol-spacing':320,'text-max-angle':30},
+      paint:{'text-color':C.street,'text-halo-color':C.halo,'text-halo-width':1.4}},
+    {id:'rail-label',type:'symbol',source:'rail',filter:['==',['get','tunnel'],'yes'],minzoom:15.5,
+      layout:{'symbol-placement':'line','text-field':'Amtrak in tunnel','text-font':['FiraSans-Italic'],'text-size':10.5,'symbol-spacing':600,'text-max-angle':25},
+      paint:{'text-color':'#6E6B63','text-halo-color':C.halo,'text-halo-width':1.3}},
+    {id:'path-label',type:'symbol',source:'path',filter:['all',['!=',['get','kind'],'sidewalk'],['!=',['get','name'],''],['has','name']],minzoom:15,
+      layout:{'symbol-placement':'line','text-field':['get','name'],'text-font':['FiraSans-Italic'],'text-size':['interpolate',['linear'],['zoom'],15,10.5,18,12.5],'symbol-spacing':420,'text-max-angle':28,'text-offset':[0,-0.9]},
+      paint:{'text-color':C.parkLabel,'text-halo-color':'#EEF3E7','text-halo-width':1.3}},
+    {id:'mask',type:'fill',source:'mask',paint:{'fill-color':'#E9EAE6','fill-opacity':0.94}},
+    {id:'focus-line',type:'line',source:'focus',paint:{'line-color':'#A3A89F','line-width':1,'line-dasharray':[4,3]}},
+    {id:'street-num',type:'symbol',source:'street_label',
+      layout:{'text-field':['step',['zoom'],['to-string',['get','n']],16.2,['get','label']],'text-font':['FiraSans-Medium'],
+        'text-size':['interpolate',['linear'],['zoom'],14,10,18,13],'text-anchor':'center','text-rotation-alignment':'viewport','text-allow-overlap':false,'text-padding':1},
+      paint:{'text-color':C.street,'text-halo-color':C.halo,'text-halo-width':2}},
+    {id:'area-label',type:'symbol',source:'area_label',minzoom:15.8,
+      layout:{'text-field':['get','name'],'text-font':['FiraSans-Italic'],'text-size':['interpolate',['linear'],['zoom'],16,11,18,12.5],'text-max-width':8,'text-padding':3},
+      paint:{'text-color':C.parkLabel,'text-halo-color':'#EEF3E7','text-halo-width':1.3}},
+    {id:'poi-dog',type:'symbol',source:'area_label',filter:['==',['get','kind'],'dogrun'],minzoom:14.8,layout:{'icon-image':'i-dogrun','icon-size':['interpolate',['linear'],['zoom'],15,0.8,18,1.1],'icon-allow-overlap':true}},
+    {id:'poi',type:'symbol',source:'poi',minzoom:14.8,
+      layout:{'icon-image':['concat','i-',['get','kind']],'icon-size':['interpolate',['linear'],['zoom'],15,0.8,18,1.1],'icon-allow-overlap':true,
+        'text-field':['step',['zoom'],'',16.3,['get','name']],'text-font':['FiraSans-Regular'],'text-size':['interpolate',['linear'],['zoom'],16,11,18,12],'text-offset':[0.9,0],'text-anchor':'left','text-max-width':9,'text-optional':true},
+      paint:{'text-color':C.label,'text-halo-color':C.halo,'text-halo-width':1.4}},
+    {id:'landmark',type:'symbol',source:'landmarks',minzoom:14,
+      layout:{'text-field':['get','name'],'text-font':['FiraSans-SemiBold'],'text-size':['interpolate',['linear'],['zoom'],14,11,18,14],'text-max-width':9,'text-padding':4,'text-letter-spacing':0.02},
+      paint:{'text-color':C.label,'text-halo-color':C.halo,'text-halo-width':1.6}},
+    {id:'park-label',type:'symbol',source:'parkpt',maxzoom:16.3,
+      layout:{'text-field':'RIVERSIDE PARK','text-font':['FiraSans-SemiBold'],'text-size':['interpolate',['linear'],['zoom'],12,12,16,18],'text-letter-spacing':0.3,'symbol-placement':'point'},
+      paint:{'text-color':C.parkLabel,'text-halo-color':'#E4ECDA','text-halo-width':1.6}}
+  ]
+
+};
+
+
+const narrow = () => innerWidth < innerHeight;
+// "Street grid" view: park axis vertical on portrait screens, horizontal (river at top) on landscape screens
+const gridBearing = () => narrow() ? GRID : GRID - 90;
+
+const map = new maplibregl.Map({container:'map',style,bounds:SLICE,fitBoundsOptions:{padding:40},
+  maxBounds:[[-74.10,40.70],[-73.84,40.90]],minZoom:11,maxZoom:19,attributionControl:false,pitchWithRotate:false,dragRotate:false,touchPitch:false});
+// fixed street-grid orientation: no rotation by mouse, touch or keyboard
+map.touchZoomRotate.disableRotation(); map.keyboard.disableRotation();
+map.addControl(new maplibregl.NavigationControl({showCompass:false}),'top-right');
+map.addControl(new maplibregl.ScaleControl({unit:'imperial',maxWidth:110}),'bottom-right');
+map.addControl(new maplibregl.AttributionControl({compact:true,customAttribution:'© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors · NYC Parks · NYC 2017 LiDAR'}),'bottom-right');
+
+// fill textures, drawn once on canvas at 2x
+function pattern(draw,size=16){ const c=document.createElement('canvas'); c.width=c.height=size*2; const g=c.getContext('2d'); g.scale(2,2); draw(g,size); return g.getImageData(0,0,size*2,size*2); }
+function addPatterns(){
+  if(!map.hasImage('p-meadow')) map.addImage('p-meadow',pattern((g,s)=>{ g.fillStyle='rgba(84,112,58,0.55)';
+    [[3,4],[11,2],[7,9],[14,11],[2,13],[10,15]].forEach(([x,y])=>{ g.beginPath(); g.arc(x,y,0.7,0,7); g.fill(); }); },16),{pixelRatio:2});
+  if(!map.hasImage('p-garden')) map.addImage('p-garden',pattern((g,s)=>{ g.strokeStyle='rgba(120,98,40,0.45)'; g.lineWidth=0.8;
+    [[4,4],[12,12]].forEach(([x,y])=>{ g.beginPath(); g.moveTo(x-1.8,y); g.lineTo(x+1.8,y); g.moveTo(x,y-1.8); g.lineTo(x,y+1.8); g.stroke(); }); },16),{pixelRatio:2});
+}
+// icon set: 28px SVG masters rendered to 2x PNG (icons/)
+map.on('load',async()=>{
+  await Promise.all(ICONS.map(async k=>{
+    try{ const r=await map.loadImage(BASE+'icons/'+k+'.png'); if(!map.hasImage('i-'+k)) map.addImage('i-'+k,r.data,{pixelRatio:2}); }catch(e){}
+  }));
+  addPatterns();
+  // Cherry Walk blossom: shown late March to mid May (or with #spring in the link, for previewing)
+  const d=new Date(), md=(d.getMonth()+1)*100+d.getDate();
+  if((md>=325 && md<=515) || location.hash==='#spring'){ ['blossom-glow','blossom'].forEach(l=>map.setLayoutProperty(l,'visibility','visible')); document.getElementById('blossom-note').hidden=false; }
+  map.setLayoutProperty('water-label','text-rotate',-(90-GRID));
+  applyView(true,false);
+});
+
+let view='grid';
+function applyView(first, animate=true){
+  const bearing = view==='grid' ? gridBearing() : 0;
+  const padL = innerWidth>560?330:24, pad=24;
+  let cam;
+  if (view==='grid'){
+    // fit the whole park along its own axis (59th–158th ≈ 7.6 km)
+    const w=map.getContainer().clientWidth-padL-pad, h=map.getContainer().clientHeight-2*pad-(innerWidth>560?0:innerHeight*0.42);
+    const [along,across]=[7900,1300];
+    const [spanX,spanY]= narrow()? [across,along] : [along,across];
+    const mpp=Math.max(spanX/w, spanY/h);
+    const zoom=Math.log2(78271.517*Math.cos(SECTION_CENTER[1]*Math.PI/180)/mpp);
+    // shift the centre so the section sits in the visible area beside/above the panel
+    cam={center:SECTION_CENTER, zoom, offset:[(padL-pad)/2, innerWidth>560?0:-(innerHeight*0.42)/2]};
+  } else {
+    cam = map.cameraForBounds(SLICE,{padding:{top:pad,bottom:pad,left:padL,right:pad},bearing});
+    if(!cam) return;
+  }
+  const opts={...cam,bearing, duration: (animate && !matchMedia('(prefers-reduced-motion: reduce)').matches)?900:0};
+  map.easeTo(opts);
+  document.getElementById('north').style.transform=`rotate(${-bearing}deg)`;
+  ensureSegments();
+}
+let rt; addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(()=>applyView(false,false),200)});
+
+const vis={relief:true,canopy:true};
+document.getElementById('t-relief').addEventListener('change',e=>{vis.relief=e.target.checked; segLayers('relief')});
+document.getElementById('t-canopy').addEventListener('change',e=>{vis.canopy=e.target.checked; segLayers('canopy')});
+function segLayers(kind){ SEGS.forEach(sg=>{ const id=kind+'-'+sg.i; if(map.getLayer(id)) map.setLayoutProperty(id,'visibility',vis[kind]?'visible':'none'); }); }
+
+// relief and canopy come in five sections; each loads when it nears the view
+let SEGS=[];
+const currentAz=()=> narrow() ? RELIEF.gridPortrait : RELIEF.gridLandscape;
+function segBounds(sg){ const xs=sg.coords.map(c=>c[0]), ys=sg.coords.map(c=>c[1]); return [Math.min(...xs),Math.min(...ys),Math.max(...xs),Math.max(...ys)]; }
+function ensureSegments(){
+  if(!SEGS.length) return;
+  const b=map.getBounds(); const pad=0.01;
+  const vb=[b.getWest()-pad,b.getSouth()-pad,b.getEast()+pad,b.getNorth()+pad];
+  const az=currentAz();
+  SEGS.forEach(sg=>{
+    const [w,s_,e,n]=segBounds(sg);
+    const near=!(e<vb[0]||w>vb[2]||n<vb[1]||s_>vb[3]);
+    if(near && !map.getSource('canopy-'+sg.i)){
+      map.addSource('canopy-'+sg.i,{type:'image',url:D('trees_'+sg.i+'_'+az+'.webp'),coordinates:sg.coords});
+      map.getSource('canopy-'+sg.i)._az=az;
+      map.addLayer({id:'canopy-'+sg.i,type:'raster',source:'canopy-'+sg.i,layout:{visibility:vis.canopy?'visible':'none'},paint:{'raster-opacity':TREE_OPACITY,'raster-fade-duration':0}},'canopy-anchor');
+      map.addSource('relief-'+sg.i,{type:'image',url:D('relief_'+sg.i+'_'+az+'.webp'),coordinates:sg.coords});
+      map.getSource('relief-'+sg.i)._az=az;
+      map.addLayer({id:'relief-'+sg.i,type:'raster',source:'relief-'+sg.i,layout:{visibility:vis.relief?'visible':'none'},paint:{'raster-opacity':RELIEF_OPACITY,'raster-fade-duration':0}},'relief-anchor');
+    }
+    const src=map.getSource('relief-'+sg.i);
+    if(src && src._az!==az){ src._az=az; src.updateImage({url:D('relief_'+sg.i+'_'+az+'.webp'),coordinates:sg.coords}); }
+    const ts=map.getSource('canopy-'+sg.i);
+    if(ts && ts._az!==az){ ts._az=az; ts.updateImage({url:D('trees_'+sg.i+'_'+az+'.webp'),coordinates:sg.coords}); }
+  });
+}
+fetch(D('segments.json')).then(r=>r.json()).then(j=>{SEGS=j; if(map.loaded()) ensureSegments();});
+map.on('moveend',ensureSegments);
+
+// street jump chips
+const jump=document.getElementById('jump');
+jump.innerHTML=Object.keys(STREETS).map(n=>`<button data-n="${n}" aria-label="Go to West ${n} Street">${n}</button>`).join('');
+jump.addEventListener('click',e=>{const b=e.target.closest('button'); if(!b)return;
+  const off = innerWidth>560 ? [150,0] : [0,-(innerHeight*0.42)/2];
+  map.easeTo({center:STREETS[b.dataset.n],zoom:16.2,offset:off,duration:matchMedia('(prefers-reduced-motion: reduce)').matches?0:900});});
+
+// legend
+const sw=(inner)=>`<svg width="28" height="14" viewBox="0 0 28 14" aria-hidden="true">${inner}</svg>`;
+const I=k=>`<img src="${BASE}icons/${k}.svg" width="17" height="17" alt="" style="display:block;margin:0 auto">`;
+const L=[
+  [sw(`<rect x="1" y="1" width="26" height="12" rx="2" fill="${C.park}"/>`),'Park'],
+  [sw(`<circle cx="8" cy="8" r="5" fill="#7FA56B"/><circle cx="17" cy="6.5" r="5.5" fill="#8DB17A"/><circle cx="12" cy="9" r="3.5" fill="#6E9A60" opacity=".9"/>`),'Trees (2017 LiDAR survey)'],
+  [sw(`<rect x="1" y="1" width="26" height="12" rx="2" fill="${C.garden}"/><g fill="rgba(84,112,58,.7)"><circle cx="6" cy="5" r=".8"/><circle cx="13" cy="9" r=".8"/><circle cx="20" cy="4" r=".8"/><circle cx="23" cy="10" r=".8"/></g>`),'Meadow'],
+  [sw(`<rect x="1" y="1" width="26" height="12" rx="2" fill="${C.garden}"/><g stroke="rgba(120,98,40,.6)" stroke-width=".9"><path d="M6 7h4M8 5v4M18 7h4M20 5v4"/></g>`),'Garden'],
+  [sw(`<rect x="1" y="1" width="26" height="12" rx="2" fill="${C.pitch}" stroke="${C.pitchLine}"/>`),'Field or court'],
+  [sw(`<rect x="1" y="1" width="26" height="12" rx="2" fill="${C.play}" stroke="${C.playLine}"/>`),'Playground area'],
+  [sw(`<rect x="1" y="1" width="26" height="12" rx="2" fill="${C.dog}" stroke="${C.dogLine}" stroke-dasharray="3 2"/>`),'Dog run'],
+  [sw(`<line x1="1" y1="7" x2="27" y2="7" stroke="${C.pathCase}" stroke-width="5.5" stroke-linecap="round"/><line x1="1" y1="7" x2="27" y2="7" stroke="#fff" stroke-width="3.6" stroke-linecap="round"/>`),'Promenade or main path'],
+  [sw(`<line x1="1" y1="7" x2="27" y2="7" stroke="${C.pathCase}" stroke-width="3" stroke-linecap="round"/><line x1="1" y1="7" x2="27" y2="7" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/>`),'Footpath'],
+  [sw(`<line x1="1" y1="7" x2="27" y2="7" stroke="#fff" stroke-width="5" stroke-linecap="round"/><line x1="1" y1="7" x2="27" y2="7" stroke="${C.cycle}" stroke-width="3" stroke-linecap="round"/>`),'Bike path / Greenway'],
+  [sw(`<line x1="1" y1="7" x2="27" y2="7" stroke="${C.steps}" stroke-width="6" stroke-dasharray="1.6 1.6"/>`),'Steps'],
+  [sw(`<line x1="1" y1="7" x2="27" y2="7" stroke="${C.wall}" stroke-width="1.4"/>`),'Retaining wall'],
+  [sw(`<line x1="1" y1="7" x2="27" y2="7" stroke="${C.bridgeCase}" stroke-width="7"/><line x1="1" y1="7" x2="27" y2="7" stroke="#fff" stroke-width="4.5"/>`),'Bridge or viaduct'],
+  [sw(`<line x1="1" y1="7" x2="27" y2="7" stroke="${C.hwyCase}" stroke-width="6"/><line x1="1" y1="7" x2="27" y2="7" stroke="${C.hwy}" stroke-width="4"/>`),'Henry Hudson Parkway'],
+  [sw(`<line x1="1" y1="7" x2="27" y2="7" stroke="${C.rail}" stroke-width="1.4" stroke-dasharray="5 4" opacity=".7"/>`),'Amtrak line in tunnel'],
+  [I('monument'),'Monument or memorial'],
+  [I('playground'),'Playground'],
+  [I('toilets'),'Restroom'],
+  [I('water'),'Drinking fountain'],
+  [I('dogrun'),'Dog run'],
+];
+document.getElementById('legend').innerHTML=L.map(([s,t])=>`<dt>${s}</dt><dd style="margin:0">${t}</dd>`).join('');
+
+// text alternative: places list, grouped by street band, nearest cross street shown
+fetch(D('places.json')).then(r=>r.json()).then(pl=>{
+  const bands=[[59,79],[80,99],[100,119],[120,139],[140,158]];
+  const ul=document.getElementById('list'); const esc=t=>String(t).replace(/[<&]/g,c=>c==='<'?'&lt;':'&amp;');
+  ul.innerHTML=bands.map(([a,b])=>{
+    const rows=pl.filter(p=>p.near>=a&&p.near<=b);
+    if(!rows.length) return '';
+    return `<li class="grp">${a}th – ${b}th St</li>`+rows.map(p=>`<li><button data-x="${p.lon}" data-y="${p.lat}"><span class="k">${esc(p.label)}</span><span>${esc(p.name)}</span><span class="near">W ${p.near}</span></button></li>`).join('');
+  }).join('');
+  ul.addEventListener('click',e=>{const b=e.target.closest('button'); if(!b)return;
+    map.easeTo({center:[+b.dataset.x,+b.dataset.y],zoom:17.4,duration:matchMedia('(prefers-reduced-motion: reduce)').matches?0:800});});
+});
+})();
+</script>
+</body>
+</html>
