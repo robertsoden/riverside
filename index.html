@@ -122,7 +122,7 @@ const C = {
   label:'#2A332E', street:'#4E4C45', halo:'#F4F5F0', waterLabel:'#214A58', parkLabel:'#243F1D',
   waterDeep:'#8FB0BF', waterLine:'#7FA3B2', bldgShadow:'#8F8B82', bridgeCase:'#7E7A70', rail:'#6E6B63', hood:'#6F6D66', paper:'#ECECE8', cliff:'#7C7568'
 };
-const ICONS=['monument','playground','toilets','water','dogrun','access','viewpoint'];
+const ICONS=['monument','playground','toilets','water','dogrun','access','viewpoint','food','facility','history','bike'];
 // relief lit from the screen's upper left for each orientation (true azimuths)
 const SECTION_CENTER=[-73.97218,40.80293]; // frame centre
 const RELIEF={gridPortrait:344, gridLandscape:254};
@@ -275,8 +275,8 @@ const style = {
       paint:{'text-color':C.parkLabel,'text-halo-color':'#EEF3E7','text-halo-width':1.3}},
     {id:'poi-dog',type:'symbol',source:'area_label',filter:['==',['get','kind'],'dogrun'],minzoom:14.8,layout:{'icon-image':'i-dogrun','icon-size':['interpolate',['linear'],['zoom'],15,0.8,18,1.1],'icon-allow-overlap':true}},
     {id:'poi',type:'symbol',source:'poi',minzoom:14.8,
-      layout:{'icon-image':['concat','i-',['get','kind']],'icon-size':['interpolate',['linear'],['zoom'],15,0.8,18,1.1],'icon-allow-overlap':true,
-        'text-field':['step',['zoom'],'',16.3,['get','name']],'text-font':['FiraSans-Regular'],'text-size':['interpolate',['linear'],['zoom'],16,11,18,12],'text-offset':[0.9,0],'text-anchor':'left','text-max-width':9,'text-optional':true},
+      layout:{'icon-image':['concat','i-',['get','kind']],'icon-size':['interpolate',['linear'],['zoom'],15,['match',['get','kind'],'bike',0.64,0.8],18,['match',['get','kind'],'bike',0.88,1.1]],'icon-allow-overlap':true,
+        'text-field':['step',['zoom'],'',16.3,['match',['get','kind'],'bike','',['get','name']]],'text-font':['FiraSans-Regular'],'text-size':['interpolate',['linear'],['zoom'],16,11,18,12],'text-offset':[0.9,0],'text-anchor':'left','text-max-width':9,'text-optional':true},
       paint:{'text-color':C.label,'text-halo-color':C.halo,'text-halo-width':1.4}},
     {id:'landmark',type:'symbol',source:'landmarks',minzoom:14,
       layout:{'text-field':['get','name'],'text-font':['FiraSans-SemiBold'],'text-size':['interpolate',['linear'],['zoom'],14,11,18,14],'text-max-width':9,'text-padding':4,'text-letter-spacing':0.02},
@@ -461,6 +461,10 @@ const L=[
   [I('toilets'),'Restroom'],
   [I('water'),'Drinking fountain'],
   [I('dogrun'),'Dog run'],
+  [I('food'),'Food and drink'],
+  [I('facility'),'Park building'],
+  [I('history'),'Historic site'],
+  [I('bike'),'Citi Bike station'],
 ];
 document.getElementById('legend').innerHTML=L.map(([s,t])=>`<dt>${s}</dt><dd style="margin:0">${t}</dd>`).join('');
 
