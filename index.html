@@ -77,10 +77,10 @@ details[open] summary::before{content:"▾ ";}
   <section>
     <h2>Layers</h2>
     <div class="shape" role="radiogroup" aria-label="Map shape">
-      <label><input type="radio" name="shape" id="shape-true" value="true" checked> True scale</label>
-      <label><input type="radio" name="shape" id="shape-stretch" value="stretch"> Widened</label>
+      <label><input type="radio" name="shape" id="shape-stretch" value="stretch" checked> Widened</label>
+      <label><input type="radio" name="shape" id="shape-true" value="true"> True scale</label>
     </div>
-    <p class="note" id="stretch-note" hidden>Crosstown distances are drawn 1.6× wider so the park is easier to read. Uptown–downtown distances stay true; the scale bar is hidden in this view.</p>
+    <p class="note" id="stretch-note">Crosstown distances are drawn 1.6× wider so the park is easier to read. Uptown–downtown distances stay true.</p>
     <div class="toggles">
       <label><input type="checkbox" id="t-relief" checked> Relief</label>
       <label><input type="checkbox" id="t-canopy" checked> Tree canopy</label>
@@ -129,40 +129,68 @@ const RELIEF={gridPortrait:344, gridLandscape:254};
 const RELIEF_OPACITY=0.75; // softened from 1.0 at Robert's request (0.6 was too faint)
 const TREE_OPACITY=0.8; // softened from 1.0 at Robert's request
 
+// ---- park axis and the widened (stretched crosstown) view -------------------------------------
+// Positions are measured along the park axis (the street grid, 29° east of north) and across it.
+// In the widened view every across-axis distance from the park's centre line is multiplied by K;
+// distances along the park are unchanged. Widened is the default; a reader's last choice is remembered.
+const AX={a:GRID*Math.PI/180, half:4300, across:1200};
+function toAxis(ll){ const k=Math.cos(SECTION_CENTER[1]*Math.PI/180);
+  const dx=(ll.lng-SECTION_CENTER[0])*k*111320, dy=(ll.lat-SECTION_CENTER[1])*110540;
+  return [dx*Math.sin(AX.a)+dy*Math.cos(AX.a), dx*Math.cos(AX.a)-dy*Math.sin(AX.a)]; }
+function fromAxis(al,ac){ const k=Math.cos(SECTION_CENTER[1]*Math.PI/180);
+  const dx=al*Math.sin(AX.a)+ac*Math.cos(AX.a), dy=al*Math.cos(AX.a)-ac*Math.sin(AX.a);
+  return [SECTION_CENTER[0]+dx/(k*111320), SECTION_CENTER[1]+dy/110540]; }
+const STRETCH=1.6;
+let K=STRETCH; try{ if(localStorage.getItem('rp-shape')==='true') K=1; }catch(e){}
+function sPt(p,k){ const [al,ac]=toAxis({lng:p[0],lat:p[1]}); return fromAxis(al,ac*k); }
+const mapC=(c,fn)=> typeof c[0]==='number' ? fn(c) : c.map(x=>mapC(x,fn));
+function sGeom(g,k){ if(!g) return g; if(g.type==='GeometryCollection') return {...g,geometries:g.geometries.map(x=>sGeom(x,k))};
+  return {...g,coordinates:mapC(g.coordinates,p=>sPt(p,k))}; }
+const sFC=(fc,k)=>({...fc,features:fc.features.map(f=>({...f,geometry:sGeom(f.geometry,k)}))});
+const segCoords=sg=> K===1 ? sg.coords : sg.coords.map(p=>sPt(p,K));
+function northDeg(){ const a=GRID*Math.PI/180; return Math.atan2(-K*Math.sin(a),Math.cos(a))*180/Math.PI; }
+// GeoJSON files load through rp://, which applies the current stretch before MapLibre sees them
+const ORIG={};
+maplibregl.addProtocol('rp', async (params)=>{
+  const path=params.url.replace('rp://','');
+  if(!ORIG[path]) ORIG[path]=await fetch(D(path)).then(r=>{ if(!r.ok) throw new Error(path+' '+r.status); return r.json(); });
+  return {data: K===1 ? ORIG[path] : sFC(ORIG[path],K)};
+});
+
 const style = {
   version:8,
   glyphs: BASE + 'fonts/{fontstack}/{range}.pbf',
   sources:{
-    land:{type:'geojson',data:D('land.geojson')},
-    deepwater:{type:'geojson',data:D('deepwater.geojson')},
-    landmarks:{type:'geojson',data:D('landmarks.geojson')},
-    hoods:{type:'geojson',data:D('hoods.geojson')},
-    rail:{type:'geojson',data:D('rail.geojson')},
-    pier:{type:'geojson',data:D('pier.geojson')},
-    boundary:{type:'geojson',data:D('boundary.geojson')},
-    park:{type:'geojson',data:D('park.geojson')},
-    green:{type:'geojson',data:D('green.geojson')},
-    wood:{type:'geojson',data:D('wood.geojson')},
-    garden:{type:'geojson',data:D('garden.geojson')},
-    pitch:{type:'geojson',data:D('pitch.geojson')},
-    playground:{type:'geojson',data:D('playground.geojson')},
-    dogpark:{type:'geojson',data:D('dogpark.geojson')},
-    water:{type:'geojson',data:D('water.geojson')},
-    outside:{type:'geojson',data:D('outside.geojson')},
-    edge:{type:'geojson',data:D('edge_fade.geojson')},
-    cliff:{type:'geojson',data:D('cliff.geojson')},
-    city_wall:{type:'geojson',data:D('city_wall.geojson')},
+    land:{type:'geojson',data:'rp://land.geojson'},
+    deepwater:{type:'geojson',data:'rp://deepwater.geojson'},
+    landmarks:{type:'geojson',data:'rp://landmarks.geojson'},
+    hoods:{type:'geojson',data:'rp://hoods.geojson'},
+    rail:{type:'geojson',data:'rp://rail.geojson'},
+    pier:{type:'geojson',data:'rp://pier.geojson'},
+    boundary:{type:'geojson',data:'rp://boundary.geojson'},
+    park:{type:'geojson',data:'rp://park.geojson'},
+    green:{type:'geojson',data:'rp://green.geojson'},
+    wood:{type:'geojson',data:'rp://wood.geojson'},
+    garden:{type:'geojson',data:'rp://garden.geojson'},
+    pitch:{type:'geojson',data:'rp://pitch.geojson'},
+    playground:{type:'geojson',data:'rp://playground.geojson'},
+    dogpark:{type:'geojson',data:'rp://dogpark.geojson'},
+    water:{type:'geojson',data:'rp://water.geojson'},
+    outside:{type:'geojson',data:'rp://outside.geojson'},
+    edge:{type:'geojson',data:'rp://edge_fade.geojson'},
+    cliff:{type:'geojson',data:'rp://cliff.geojson'},
+    city_wall:{type:'geojson',data:'rp://city_wall.geojson'},
     empty:{type:'geojson',data:{type:'FeatureCollection',features:[]}},
     parkpt:{type:'geojson',data:{type:'FeatureCollection',features:[{type:'Feature',properties:{},geometry:{type:'Point',coordinates:[-73.9716,40.8030]}}]}},
     riverlabel:{type:'geojson',data:{type:'FeatureCollection',features:[{type:'Feature',properties:{},geometry:{type:'Point',coordinates:[-73.99389,40.78521]}},{type:'Feature',properties:{},geometry:{type:'Point',coordinates:[-73.97893,40.80578]}},{type:'Feature',properties:{},geometry:{type:'Point',coordinates:[-73.96397,40.82635]}}]}}, // mid-river, spaced along the park
-    building:{type:'geojson',data:D('building.geojson')},
-    road:{type:'geojson',data:D('road.geojson')},
-    path:{type:'geojson',data:D('path.geojson')},
-    steps:{type:'geojson',data:D('steps.geojson')},
-    poi:{type:'geojson',data:D('poi.geojson')},
-    area_label:{type:'geojson',data:D('area_label.geojson')},
-    street_label:{type:'geojson',data:D('street_label.geojson')},
-    street_pts:{type:'geojson',data:D('street_label.geojson')}
+    building:{type:'geojson',data:'rp://building.geojson'},
+    road:{type:'geojson',data:'rp://road.geojson'},
+    path:{type:'geojson',data:'rp://path.geojson'},
+    steps:{type:'geojson',data:'rp://steps.geojson'},
+    poi:{type:'geojson',data:'rp://poi.geojson'},
+    area_label:{type:'geojson',data:'rp://area_label.geojson'},
+    street_label:{type:'geojson',data:'rp://street_label.geojson'},
+    street_pts:{type:'geojson',data:'rp://street_label.geojson'}
   },
   layers:[
     {id:'bg',type:'background',paint:{'background-color':C.paper}},
@@ -262,6 +290,11 @@ const style = {
 
 };
 
+// inline GeoJSON sources (river and park labels, placeholders) are stretched here rather than via rp://
+const INLINE={};
+Object.keys(style.sources).forEach(id=>{ const src=style.sources[id];
+  if(src.type==='geojson' && typeof src.data==='object'){ INLINE[id]=src.data; if(K!==1) src.data=sFC(src.data,K); } });
+
 
 const narrow = () => innerWidth < innerHeight;
 const stageW = () => map.getContainer().clientWidth;  // the map's width, not the window's
@@ -331,46 +364,29 @@ function applyView(first, animate=true, limitsOnly=false){
 }
 // keep the view on the park: the centre may move along the park axis
 // (59th to 158th) and a limited distance across it, never off into blank paper
-const AX={a:GRID*Math.PI/180, half:4300, across:1200};
-function toAxis(ll){ const k=Math.cos(SECTION_CENTER[1]*Math.PI/180);
-  const dx=(ll.lng-SECTION_CENTER[0])*k*111320, dy=(ll.lat-SECTION_CENTER[1])*110540;
-  return [dx*Math.sin(AX.a)+dy*Math.cos(AX.a), dx*Math.cos(AX.a)-dy*Math.sin(AX.a)]; }
-function fromAxis(al,ac){ const k=Math.cos(SECTION_CENTER[1]*Math.PI/180);
-  const dx=al*Math.sin(AX.a)+ac*Math.cos(AX.a), dy=al*Math.cos(AX.a)-ac*Math.sin(AX.a);
-  return [SECTION_CENTER[0]+dx/(k*111320), SECTION_CENTER[1]+dy/110540]; }
-// ---- stretched east–west view ------------------------------------------------------------
-// Every coordinate is re-drawn with its distance from the park's centre line multiplied by K
-// (measured across the street grid); distances along the park are unchanged.
-const STRETCH=1.6; let K=1;
-function sPt(p,k){ const [al,ac]=toAxis({lng:p[0],lat:p[1]}); return fromAxis(al,ac*k); }
-const mapC=(c,fn)=> typeof c[0]==='number' ? fn(c) : c.map(x=>mapC(x,fn));
-function sGeom(g,k){ if(!g) return g; if(g.type==='GeometryCollection') return {...g,geometries:g.geometries.map(x=>sGeom(x,k))};
-  return {...g,coordinates:mapC(g.coordinates,p=>sPt(p,k))}; }
-const sFC=(fc,k)=>({...fc,features:fc.features.map(f=>({...f,geometry:sGeom(f.geometry,k)}))});
-const segCoords=sg=> K===1 ? sg.coords : sg.coords.map(p=>sPt(p,K));
-function northDeg(){ const a=GRID*Math.PI/180; return Math.atan2(-K*Math.sin(a),Math.cos(a))*180/Math.PI; }
-const ORIG={}; // original GeoJSON per source, fetched once when first needed
-async function setShape(on){
-  const k=on?STRETCH:1; if(k===K) return;
-  const ids=Object.keys(style.sources).filter(id=>style.sources[id].type==='geojson');
-  await Promise.all(ids.map(async id=>{
-    if(!ORIG[id]){ const d=style.sources[id].data; ORIG[id]= typeof d==='string' ? await fetch(d).then(r=>r.json()) : d; }
-  }));
-  const c=map.getCenter(), [al,ac]=toAxis(c), z=map.getZoom(), oldK=K;
-  K=k;
-  ids.forEach(id=>map.getSource(id).setData(K===1?ORIG[id]:sFC(ORIG[id],K)));
-  SEGS.forEach(sg=>['relief','canopy'].forEach(kind=>{ const src=map.getSource(kind+'-'+sg.i);
-    if(src) src.updateImage({url:src.url||(kind==='relief'?D('relief_'+sg.i+'_'+src._az+'.webp'):D('trees_'+sg.i+'_'+src._az+'.webp')),coordinates:segCoords(sg)}); }));
-  clamping=true; map.jumpTo({center:fromAxis(al,ac*K/oldK),zoom:z}); clamping=false;
-  applyView(false,false,true);
+// switching shape: re-request every GeoJSON source through the rp:// protocol (which stretches by the new K),
+// re-stretch the inline sources and the relief/tree image corners, and keep the reader's place
+function syncShapeUI(){
+  document.getElementById(K===1?'shape-true':'shape-stretch').checked=true;
   document.querySelector('.maplibregl-ctrl-scale').style.display = K===1 ? '' : 'none';
   document.getElementById('stretch-note').hidden = K===1;
   document.getElementById('north').style.transform=`rotate(${northDeg()}deg)`;
+}
+function setShape(on){
+  const k=on?STRETCH:1; if(k===K) return;
+  const c=map.getCenter(), [al,ac]=toAxis(c), z=map.getZoom(), oldK=K;
+  K=k;
+  Object.keys(style.sources).forEach(id=>{ const src=style.sources[id]; if(src.type!=='geojson') return;
+    map.getSource(id).setData(INLINE[id] ? (K===1?INLINE[id]:sFC(INLINE[id],K)) : src.data); });
+  SEGS.forEach(sg=>['relief','canopy'].forEach(kind=>{ const src=map.getSource(kind+'-'+sg.i);
+    if(src) src.updateImage({url:src.url,coordinates:segCoords(sg)}); }));
+  clamping=true; map.jumpTo({center:fromAxis(al,ac*K/oldK),zoom:z}); clamping=false;
+  applyView(false,false,true);
+  syncShapeUI();
   try{ localStorage.setItem('rp-shape', on?'stretch':'true'); }catch(e){}
 }
 document.querySelectorAll('input[name=shape]').forEach(r=>r.addEventListener('change',e=>setShape(e.target.value==='stretch')));
-map.on('load',()=>{ let v=null; try{ v=localStorage.getItem('rp-shape'); }catch(e){}
-  if(v==='stretch'){ document.getElementById('shape-stretch').checked=true; setShape(true); } });
+syncShapeUI();
 
 let clamping=false;
 map.on('move',()=>{
