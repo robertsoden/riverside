@@ -339,14 +339,14 @@ function applyView(first, animate=true, limitsOnly=false){
   if (view==='grid'){
     // fit the whole park along its own axis (59th–158th ≈ 7.6 km)
     const w=map.getContainer().clientWidth-padL-pad, h=map.getContainer().clientHeight-2*pad-(wide?0:innerHeight*0.42);
-    const [along,across]=[7900,1300*K];
+    const [along,across]=[7650,1300*K];  // 59th–158th is 7,560 m along the grid; ~1% margin
     const [spanX,spanY]= [across,along];
     // the container can be zero-sized while the page is still being laid out (e.g. inside an embedding frame):
     // keep the orientation, skip the fit, and fit again once it has a real size
     if (!(w>80 && h>80)) { map.setBearing(bearing); document.getElementById('north').style.transform=`rotate(${northDeg()}deg)`; return; }
     const k=78271.517*Math.cos(SECTION_CENTER[1]*Math.PI/180);
     const zoomAll=Math.log2(k/Math.max(spanX/w, spanY/h));      // whole park: the zoom-out limit
-    const zoom=Math.log2(k/Math.max(1300*K/w, 2800/h));           // opening view: ~2.8 km of the park (about 40 blocks)
+    const zoom=zoomAll;                                           // opening view: the whole park, filling the height
     if (!isFinite(zoom)||!isFinite(zoomAll)) return;
     fitAll=zoomAll;
     // shift the centre so the section sits in the visible area beside/above the panel
@@ -355,7 +355,7 @@ function applyView(first, animate=true, limitsOnly=false){
     cam = map.cameraForBounds(SLICE,{padding:{top:pad,bottom:pad,left:padL,right:pad},bearing});
     if(!cam) return;
   }
-  if (view==='grid' && fitAll) map.setMinZoom(Math.max(10,fitAll-0.05));
+  if (view==='grid' && fitAll) map.setMinZoom(Math.max(10,fitAll-0.02));
   if (limitsOnly) return;
   const opts={...cam,bearing, duration: (animate && !matchMedia('(prefers-reduced-motion: reduce)').matches)?900:0};
   map.easeTo(opts);
