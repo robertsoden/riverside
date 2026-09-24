@@ -355,7 +355,7 @@ function ensureSegments(){
     if(near && !map.getSource('canopy-'+sg.i)){
       map.addSource('canopy-'+sg.i,{type:'image',url:D('trees_'+sg.i+'_'+az+'.webp'),coordinates:sg.coords});
       map.getSource('canopy-'+sg.i)._az=az;
-      map.addLayer({id:'canopy-'+sg.i,type:'raster',source:'canopy-'+sg.i,layout:{visibility:vis.canopy?'visible':'none'},paint:{'raster-opacity':['interpolate',['linear'],['zoom'],15,TREE_OPACITY,18,0.45],'raster-fade-duration':0}},'canopy-anchor');
+      map.addLayer({id:'canopy-'+sg.i,type:'raster',source:'canopy-'+sg.i,layout:{visibility:vis.canopy?'visible':'none'},paint:{'raster-opacity':['interpolate',['linear'],['zoom'],15,TREE_OPACITY,18,0.3],'raster-fade-duration':0}},'canopy-anchor');
       map.addSource('relief-'+sg.i,{type:'image',url:D('relief_'+sg.i+'_'+az+'.webp'),coordinates:sg.coords});
       map.getSource('relief-'+sg.i)._az=az;
       map.addLayer({id:'relief-'+sg.i,type:'raster',source:'relief-'+sg.i,layout:{visibility:vis.relief?'visible':'none'},paint:{'raster-opacity':RELIEF_OPACITY,'raster-fade-duration':0}},'relief-anchor');
