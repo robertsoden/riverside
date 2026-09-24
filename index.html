@@ -205,7 +205,7 @@ const style = {
     city_wall:{type:'geojson',data:'rp://city_wall.geojson'},
     empty:{type:'geojson',data:{type:'FeatureCollection',features:[]}},
     parkpt:{type:'geojson',data:{type:'FeatureCollection',features:[{type:'Feature',properties:{},geometry:{type:'Point',coordinates:[-73.9716,40.8030]}}]}},
-    riverlabel:{type:'geojson',data:{type:'FeatureCollection',features:[{type:'Feature',properties:{},geometry:{type:'Point',coordinates:[-73.99389,40.78521]}},{type:'Feature',properties:{},geometry:{type:'Point',coordinates:[-73.97893,40.80578]}},{type:'Feature',properties:{},geometry:{type:'Point',coordinates:[-73.96397,40.82635]}}]}}, // mid-river, spaced along the park
+    riverlabel:{type:'geojson',data:{type:'FeatureCollection',features:[{type:'Feature',properties:{},geometry:{type:'Point',coordinates:[-73.99389,40.78521]}},{type:'Feature',properties:{m:1},geometry:{type:'Point',coordinates:[-73.97893,40.80578]}},{type:'Feature',properties:{},geometry:{type:'Point',coordinates:[-73.96397,40.82635]}}]}}, // mid-river; one label (m) when zoomed out, all three from z15 where only one fits on screen
     building:{type:'geojson',data:'rp://building.geojson'},
     road:{type:'geojson',data:'rp://road.geojson'},
     path:{type:'geojson',data:'rp://path.geojson'},
@@ -275,7 +275,10 @@ const style = {
     {id:'path-bridge-case',type:'line',source:'path',filter:['==',['get','bridge'],true],minzoom:14.5,paint:{'line-color':C.bridgeCase,'line-width':['interpolate',['linear'],['zoom'],15,3,18,9]}},
     {id:'path-bridge',type:'line',source:'path',filter:['==',['get','bridge'],true],minzoom:14.5,paint:{'line-color':C.path,'line-width':['interpolate',['linear'],['zoom'],15,1.6,18,5.5]}},
 
-    {id:'water-label',type:'symbol',source:'riverlabel',
+    {id:'water-label',type:'symbol',source:'riverlabel',filter:['==',['get','m'],1],maxzoom:15,
+      layout:{'symbol-placement':'point','text-field':'Hudson River','text-font':['SourceSerif4-Italic'],'text-size':['interpolate',['linear'],['zoom'],12,14,17,26],'text-rotation-alignment':'map','text-rotate':-61,'text-letter-spacing':0.18,'text-anchor':'center','text-allow-overlap':true,'text-ignore-placement':true},
+      paint:{'text-color':C.waterLabel,'text-opacity':0.9}},
+    {id:'water-label-z',type:'symbol',source:'riverlabel',minzoom:15,
       layout:{'symbol-placement':'point','text-field':'Hudson River','text-font':['SourceSerif4-Italic'],'text-size':['interpolate',['linear'],['zoom'],12,14,17,26],'text-rotation-alignment':'map','text-rotate':-61,'text-letter-spacing':0.18,'text-anchor':'center','text-allow-overlap':true,'text-ignore-placement':true},
       paint:{'text-color':C.waterLabel,'text-opacity':0.9}},
     {id:'hood',type:'symbol',source:'hoods',minzoom:11.5,maxzoom:16.5,
@@ -355,7 +358,7 @@ map.on('load',async()=>{
   // Cherry Walk blossom: shown late March to mid May (or with #spring in the link, for previewing)
   const d=new Date(), md=(d.getMonth()+1)*100+d.getDate();
   if((md>=325 && md<=515) || location.hash==='#spring'){ ['blossom-glow','blossom'].forEach(l=>map.setLayoutProperty(l,'visibility','visible')); document.getElementById('blossom-note').hidden=false; }
-  map.setLayoutProperty('water-label','text-rotate',-(90-GRID));
+  ['water-label','water-label-z'].forEach(l=>map.setLayoutProperty(l,'text-rotate',-(90-GRID)));
   // phone: start with the attribution collapsed to its (i) button
   if(stageW()<=640) document.querySelector('.maplibregl-ctrl-attrib')?.classList.remove('maplibregl-compact-show');
   applyView(true,false);
