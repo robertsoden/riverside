@@ -7,7 +7,7 @@ It is a static site: `index.html` plus data, glyph, icon and library files. Ther
 ## Run locally
 
 ```sh
-cd riverside-park
+cd riverside
 python3 -m http.server 8000
 # open http://localhost:8000
 ```
@@ -16,14 +16,14 @@ python3 -m http.server 8000
 
 ## Publish on GitHub Pages
 
-1. Create an empty repository on GitHub (for example `riverside-park`). Don't add a README or licence.
+1. Create an empty repository on GitHub (for example `riverside`). Don't add a README or licence.
 2. From this folder:
    ```sh
-   git remote add origin https://github.com/<your-username>/riverside-park.git
+   git remote add origin https://github.com/<your-username>/riverside.git
    git push -u origin main
    ```
 3. On GitHub: **Settings → Pages → Build and deployment → Source: Deploy from a branch → Branch: `main`, folder `/ (root)` → Save.**
-4. After a minute or two the map is live at `https://<your-username>.github.io/riverside-park/`.
+4. After a minute or two the map is live at `https://<your-username>.github.io/riverside/`.
 
 `.nojekyll` tells GitHub Pages to serve the files as they are.
 

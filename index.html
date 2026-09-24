@@ -114,10 +114,10 @@ const C = {
   water:'#BFD5DD', land:'#F2F2EF', park:'#DDE7D0', lawn:'#CFE2BC', wood:'#C4D9B0', garden:'#DDE3B0',
   pitch:'#B7D494', pitchLine:'#F7FAF2', play:'#F8E3B8', playLine:'#C9974E', dog:'#D9C4A6', dogLine:'#A88A64',
   bldg:'#E4E2DC', bldgLine:'#D3D0C8', road:'#FFFFFF', roadCase:'#DBD8D1',
-  hwy:'#F2E2B6', hwyCase:'#BCA46A', path:'#FFFFFF', pathCase:'#93A185', cycle:'#2E7867',
+  hwy:'#F2E2B6', hwyCase:'#BCA46A', path:'#FFFFFF', pathCase:'#93A185', cycle:'#A8562C',
   steps:'#5E4B39', wall:'#5E5A50', bound:'#587E43', contour:'#7E8C6E',
   label:'#2A332E', street:'#4E4C45', halo:'#F4F5F0', waterLabel:'#214A58', parkLabel:'#243F1D',
-  waterDeep:'#AFC9D4', waterLine:'#7FA3B2', bldgShadow:'#8F8B82', bridgeCase:'#7E7A70', rail:'#6E6B63', hood:'#6F6D66'
+  waterDeep:'#AFC9D4', waterLine:'#7FA3B2', bldgShadow:'#8F8B82', bridgeCase:'#7E7A70', rail:'#6E6B63', hood:'#6F6D66', paper:'#ECECE8', cliff:'#7C7568'
 };
 const ICONS=['monument','playground','toilets','water','dogrun','access','viewpoint'];
 // relief lit from the screen's upper left for each orientation (true azimuths)
@@ -146,10 +146,11 @@ const style = {
     playground:{type:'geojson',data:D('playground.geojson')},
     dogpark:{type:'geojson',data:D('dogpark.geojson')},
     water:{type:'geojson',data:D('water.geojson')},
-    mask:{type:'geojson',data:D('mask.geojson')},
+    outside:{type:'geojson',data:D('outside.geojson')},
+    edge:{type:'geojson',data:D('edge_fade.geojson')},
+    cliff:{type:'geojson',data:D('cliff.geojson')},
     city_wall:{type:'geojson',data:D('city_wall.geojson')},
     empty:{type:'geojson',data:{type:'FeatureCollection',features:[]}},
-    focus:{type:'geojson',data:D('focus.geojson')},
     parkpt:{type:'geojson',data:{type:'FeatureCollection',features:[{type:'Feature',properties:{},geometry:{type:'Point',coordinates:[-73.9716,40.8030]}}]}},
     riverlabel:{type:'geojson',data:{type:'FeatureCollection',features:[{type:'Feature',properties:{},geometry:{type:'Point',coordinates:[-73.97460,40.80421]}}]}},
     building:{type:'geojson',data:D('building.geojson')},
@@ -162,7 +163,8 @@ const style = {
     street_pts:{type:'geojson',data:D('street_label.geojson')}
   },
   layers:[
-    {id:'bg',type:'background',paint:{'background-color':C.water}},
+    {id:'bg',type:'background',paint:{'background-color':C.paper}},
+    {id:'water',type:'fill',source:'water',paint:{'fill-color':C.water}},
     {id:'deep',type:'fill',source:'deepwater',paint:{'fill-color':C.waterDeep,'fill-opacity':['match',['get','i'],0,0.45,0.8]}},
     {id:'waterline',type:'line',source:'waterlines',paint:{'line-color':C.waterLine,'line-opacity':['match',['get','i'],0,0.75,1,0.5,2,0.32,0.2],'line-width':['interpolate',['linear'],['zoom'],13,0.5,17,1.1]}},
     {id:'land',type:'fill',source:'land',paint:{'fill-color':C.land}},
@@ -179,14 +181,15 @@ const style = {
     {id:'pitch',type:'fill',source:'pitch',paint:{'fill-color':C.pitch,'fill-outline-color':C.pitchLine}},
     {id:'play',type:'fill',source:'playground',paint:{'fill-color':C.play}},
     {id:'play-line',type:'line',source:'playground',paint:{'line-color':C.playLine,'line-width':0.9}},
-    {id:'water-f',type:'fill',source:'water',filter:['!=',['get','name'],'Hudson River'],paint:{'fill-color':C.water}},
     {id:'rail-tunnel',type:'line',source:'rail',filter:['==',['get','tunnel'],'yes'],minzoom:14,paint:{'line-color':C.rail,'line-opacity':0.55,'line-width':['interpolate',['linear'],['zoom'],14,0.8,18,2],'line-dasharray':[5,4]}},
+    {id:'cliff-ticks',type:'line',source:'cliff',minzoom:13,paint:{'line-color':C.cliff,'line-opacity':0.7,'line-width':['interpolate',['linear'],['zoom'],13,3,17,7],'line-offset':['interpolate',['linear'],['zoom'],13,1.5,17,3.5],'line-dasharray':[0.25,0.9]}},
+    {id:'cliff',type:'line',source:'cliff',minzoom:12,paint:{'line-color':C.cliff,'line-width':['interpolate',['linear'],['zoom'],12,0.6,17,1.4]}},
     {id:'relief-anchor',type:'line',source:'empty'},
     {id:'canopy-anchor',type:'line',source:'empty'},
-    {id:'bldg-shadow-0',type:'fill',source:'building',filter:['==',['get','hc'],0],paint:{'fill-color':C.bldgShadow,'fill-opacity':0.45,'fill-translate-anchor':'viewport','fill-translate':['interpolate',['linear'],['zoom'],14,['literal',[0.6,0.6]],18,['literal',[4,4]]]}},
-    {id:'bldg-shadow-1',type:'fill',source:'building',filter:['==',['get','hc'],1],paint:{'fill-color':C.bldgShadow,'fill-opacity':0.45,'fill-translate-anchor':'viewport','fill-translate':['interpolate',['linear'],['zoom'],14,['literal',[1.2,1.2]],18,['literal',[9,9]]]}},
-    {id:'bldg-shadow-2',type:'fill',source:'building',filter:['==',['get','hc'],2],paint:{'fill-color':C.bldgShadow,'fill-opacity':0.45,'fill-translate-anchor':'viewport','fill-translate':['interpolate',['linear'],['zoom'],14,['literal',[2.2,2.2]],18,['literal',[16,16]]]}},
-    {id:'bldg',type:'fill',source:'building',paint:{'fill-color':C.bldg,'fill-outline-color':C.bldgLine}},
+    {id:'bldg-shadow-0',type:'fill',source:'building',filter:['==',['get','hc'],0],paint:{'fill-color':C.bldgShadow,'fill-opacity':['*',0.45,['interpolate',['linear'],['get','fd'],900,1,1600,0]],'fill-translate-anchor':'viewport','fill-translate':['interpolate',['linear'],['zoom'],14,['literal',[0.6,0.6]],18,['literal',[4,4]]]}},
+    {id:'bldg-shadow-1',type:'fill',source:'building',filter:['==',['get','hc'],1],paint:{'fill-color':C.bldgShadow,'fill-opacity':['*',0.45,['interpolate',['linear'],['get','fd'],900,1,1600,0]],'fill-translate-anchor':'viewport','fill-translate':['interpolate',['linear'],['zoom'],14,['literal',[1.2,1.2]],18,['literal',[9,9]]]}},
+    {id:'bldg-shadow-2',type:'fill',source:'building',filter:['==',['get','hc'],2],paint:{'fill-color':C.bldgShadow,'fill-opacity':['*',0.45,['interpolate',['linear'],['get','fd'],900,1,1600,0]],'fill-translate-anchor':'viewport','fill-translate':['interpolate',['linear'],['zoom'],14,['literal',[2.2,2.2]],18,['literal',[16,16]]]}},
+    {id:'bldg',type:'fill',source:'building',paint:{'fill-color':C.bldg,'fill-outline-color':C.bldgLine,'fill-opacity':['interpolate',['linear'],['get','fd'],900,1,1600,0]}},
     {id:'road-case',type:'line',source:'road',filter:['all',['!=',['get','kind'],'highway'],['!=',['get','bridge'],true]],layout:{'line-cap':'round','line-join':'round'},
       paint:{'line-color':C.roadCase,'line-width':['interpolate',['exponential',1.6],['zoom'],14,['match',['get','kind'],'major',3,'minor',2,1],18,['match',['get','kind'],'major',22,'minor',16,6]]}},
     {id:'hwy-case',type:'line',source:'road',filter:['all',['==',['get','kind'],'highway'],['!=',['get','bridge'],true]],layout:{'line-cap':'round','line-join':'round'},
@@ -200,9 +203,11 @@ const style = {
     {id:'path',type:'line',source:'path',filter:['all',['==',['get','kind'],'foot'],['!=',['get','bridge'],true]],minzoom:14.5,layout:{'line-cap':'round','line-join':'round'},
       paint:{'line-color':C.path,'line-width':['interpolate',['linear'],['zoom'],15,['case',['==',['get','major'],true],1.6,0.8],18,['case',['==',['get','major'],true],6,3.4]]}},
     {id:'cycle-case',type:'line',source:'path',filter:['all',['==',['get','kind'],'cycle'],['!=',['get','bridge'],true]],layout:{'line-cap':'round','line-join':'round'},
-      paint:{'line-color':'#FFFFFF','line-width':['interpolate',['linear'],['zoom'],14,2.4,18,6.5]}},
+      paint:{'line-color':C.pathCase,'line-opacity':0.85,'line-width':['interpolate',['linear'],['zoom'],13,1.8,15,3,18,9]}},
     {id:'cycle',type:'line',source:'path',filter:['all',['==',['get','kind'],'cycle'],['!=',['get','bridge'],true]],layout:{'line-cap':'round','line-join':'round'},
-      paint:{'line-color':C.cycle,'line-width':['interpolate',['linear'],['zoom'],14,1.2,18,4]}},
+      paint:{'line-color':C.path,'line-width':['interpolate',['linear'],['zoom'],13,1,15,1.9,18,6.5]}},
+    {id:'cycle-dash',type:'line',source:'path',filter:['all',['==',['get','kind'],'cycle'],['!=',['get','bridge'],true]],minzoom:13.5,
+      paint:{'line-color':C.cycle,'line-width':['interpolate',['linear'],['zoom'],13.5,0.8,18,2.2],'line-dasharray':[3,2.2]}},
     {id:'blossom-glow',type:'line',source:'path',filter:['==',['get','name'],'Cherry Walk'],layout:{visibility:'none','line-cap':'round'},paint:{'line-color':'#F4B6C8','line-opacity':0.55,'line-blur':3,'line-width':['interpolate',['linear'],['zoom'],13,5,18,26]}},
     {id:'blossom',type:'line',source:'path',filter:['==',['get','name'],'Cherry Walk'],layout:{visibility:'none','line-cap':'round'},paint:{'line-color':'#E8849F','line-width':['interpolate',['linear'],['zoom'],13,2.5,18,7],'line-dasharray':[0,2.2],'line-offset':['interpolate',['linear'],['zoom'],13,3,18,11]}},
     {id:'steps',type:'line',source:'steps',minzoom:15,paint:{'line-color':C.steps,'line-width':['interpolate',['linear'],['zoom'],15,2.5,18,7],'line-dasharray':[0.25,0.25]}},
@@ -214,13 +219,13 @@ const style = {
     {id:'bridge',type:'line',source:'road',filter:['==',['get','bridge'],true],layout:{'line-cap':'butt','line-join':'round'},
       paint:{'line-color':['match',['get','kind'],'highway',C.hwy,C.road],'line-width':['interpolate',['exponential',1.6],['zoom'],14,['match',['get','kind'],'highway',2.5,'major',2,1.2],18,['match',['get','kind'],'highway',17,'major',20,14]]}},
     {id:'path-bridge-case',type:'line',source:'path',filter:['==',['get','bridge'],true],minzoom:14.5,paint:{'line-color':C.bridgeCase,'line-width':['interpolate',['linear'],['zoom'],15,3,18,9]}},
-    {id:'path-bridge',type:'line',source:'path',filter:['==',['get','bridge'],true],minzoom:14.5,paint:{'line-color':['match',['get','kind'],'cycle',C.cycle,C.path],'line-width':['interpolate',['linear'],['zoom'],15,1.6,18,5.5]}},
+    {id:'path-bridge',type:'line',source:'path',filter:['==',['get','bridge'],true],minzoom:14.5,paint:{'line-color':C.path,'line-width':['interpolate',['linear'],['zoom'],15,1.6,18,5.5]}},
 
     {id:'water-label',type:'symbol',source:'riverlabel',
       layout:{'symbol-placement':'point','text-field':'Hudson River','text-font':['SourceSerif4-Italic'],'text-size':['interpolate',['linear'],['zoom'],12,14,17,26],'text-rotation-alignment':'map','text-rotate':-61,'text-letter-spacing':0.18,'text-anchor':'center'},
       paint:{'text-color':C.waterLabel,'text-opacity':0.9}},
-    {id:'hood',type:'symbol',source:'hoods',minzoom:12.5,maxzoom:17,
-      layout:{'text-field':['get','name'],'text-font':['FiraSans-Regular'],'text-size':['interpolate',['linear'],['zoom'],13,10,16,13],'text-letter-spacing':0.32,'text-rotation-alignment':'viewport','text-max-width':12,'text-padding':6},
+    {id:'hood',type:'symbol',source:'hoods',minzoom:11.5,maxzoom:16.5,
+      layout:{'text-field':['upcase',['get','name']],'text-font':['FiraSans-Regular'],'text-size':['interpolate',['linear'],['zoom'],12,10,16,13],'text-letter-spacing':0.32,'text-rotation-alignment':'viewport','text-max-width':12,'text-padding':6},
       paint:{'text-color':C.hood,'text-halo-color':C.land,'text-halo-width':1.5}},
     {id:'road-label',type:'symbol',source:'road',filter:['all',['in',['get','kind'],['literal',['major','highway']]],['!=',['get','name'],'']],minzoom:14.5,
       layout:{'symbol-placement':'line','text-field':['get','name'],'text-font':['FiraSans-Medium'],'text-size':['interpolate',['linear'],['zoom'],15,10.5,18,13],'symbol-spacing':320,'text-max-angle':30},
@@ -231,8 +236,6 @@ const style = {
     {id:'path-label',type:'symbol',source:'path',filter:['all',['!=',['get','kind'],'sidewalk'],['!=',['get','name'],''],['has','name']],minzoom:15,
       layout:{'symbol-placement':'line','text-field':['get','name'],'text-font':['FiraSans-Italic'],'text-size':['interpolate',['linear'],['zoom'],15,10.5,18,12.5],'symbol-spacing':420,'text-max-angle':28,'text-offset':[0,-0.9]},
       paint:{'text-color':C.parkLabel,'text-halo-color':'#EEF3E7','text-halo-width':1.3}},
-    {id:'mask',type:'fill',source:'mask',paint:{'fill-color':'#E9EAE6','fill-opacity':0.94}},
-    {id:'focus-line',type:'line',source:'focus',paint:{'line-color':'#A3A89F','line-width':1,'line-dasharray':[4,3]}},
     {id:'street-num',type:'symbol',source:'street_label',
       layout:{'text-field':['step',['zoom'],['to-string',['get','n']],16.2,['get','label']],'text-font':['FiraSans-Medium'],
         'text-size':['interpolate',['linear'],['zoom'],14,10,18,13],'text-anchor':'center','text-rotation-alignment':'viewport','text-allow-overlap':false,'text-padding':1},
@@ -248,6 +251,8 @@ const style = {
     {id:'landmark',type:'symbol',source:'landmarks',minzoom:14,
       layout:{'text-field':['get','name'],'text-font':['FiraSans-SemiBold'],'text-size':['interpolate',['linear'],['zoom'],14,11,18,14],'text-max-width':9,'text-padding':4,'text-letter-spacing':0.02},
       paint:{'text-color':C.label,'text-halo-color':C.halo,'text-halo-width':1.6}},
+    {id:'edge-fade',type:'fill',source:'edge',paint:{'fill-color':C.paper,'fill-opacity':['match',['get','k'],0,0.85,1,0.62,2,0.4,3,0.22,0.08]}},
+    {id:'outside',type:'fill',source:'outside',paint:{'fill-color':C.paper}},
     {id:'park-label',type:'symbol',source:'parkpt',maxzoom:16.3,
       layout:{'text-field':'RIVERSIDE PARK','text-font':['FiraSans-SemiBold'],'text-size':['interpolate',['linear'],['zoom'],12,12,16,18],'text-letter-spacing':0.3,'symbol-placement':'point'},
       paint:{'text-color':C.parkLabel,'text-halo-color':'#E4ECDA','text-halo-width':1.6}}
@@ -261,7 +266,7 @@ const narrow = () => innerWidth < innerHeight;
 const gridBearing = () => narrow() ? GRID : GRID - 90;
 
 const map = new maplibregl.Map({container:'map',style,bounds:SLICE,fitBoundsOptions:{padding:40},
-  maxBounds:[[-74.10,40.70],[-73.84,40.90]],minZoom:11,maxZoom:19,attributionControl:false,pitchWithRotate:false,dragRotate:false,touchPitch:false});
+  maxBounds:[[-74.2,40.6],[-73.7,41.0]],minZoom:10,maxZoom:19,attributionControl:false,pitchWithRotate:false,dragRotate:false,touchPitch:false});
 // fixed street-grid orientation: no rotation by mouse, touch or keyboard
 map.touchZoomRotate.disableRotation(); map.keyboard.disableRotation();
 map.addControl(new maplibregl.NavigationControl({showCompass:false}),'top-right');
@@ -307,11 +312,28 @@ function applyView(first, animate=true){
     cam = map.cameraForBounds(SLICE,{padding:{top:pad,bottom:pad,left:padL,right:pad},bearing});
     if(!cam) return;
   }
+  if (view==='grid' && cam.zoom) map.setMinZoom(Math.max(10,cam.zoom-0.05));
   const opts={...cam,bearing, duration: (animate && !matchMedia('(prefers-reduced-motion: reduce)').matches)?900:0};
   map.easeTo(opts);
   document.getElementById('north').style.transform=`rotate(${-bearing}deg)`;
   ensureSegments();
 }
+// keep the view on the park: the centre may move along the park axis
+// (59th to 158th) and a limited distance across it, never off into blank paper
+const AX={a:GRID*Math.PI/180, half:4300, across:1200};
+function toAxis(ll){ const k=Math.cos(SECTION_CENTER[1]*Math.PI/180);
+  const dx=(ll.lng-SECTION_CENTER[0])*k*111320, dy=(ll.lat-SECTION_CENTER[1])*110540;
+  return [dx*Math.sin(AX.a)+dy*Math.cos(AX.a), dx*Math.cos(AX.a)-dy*Math.sin(AX.a)]; }
+function fromAxis(al,ac){ const k=Math.cos(SECTION_CENTER[1]*Math.PI/180);
+  const dx=al*Math.sin(AX.a)+ac*Math.cos(AX.a), dy=al*Math.cos(AX.a)-ac*Math.sin(AX.a);
+  return [SECTION_CENTER[0]+dx/(k*111320), SECTION_CENTER[1]+dy/110540]; }
+let clamping=false;
+map.on('move',()=>{
+  if(clamping) return;
+  const [al,ac]=toAxis(map.getCenter());
+  const cal=Math.max(-AX.half,Math.min(AX.half,al)), cac=Math.max(-AX.across,Math.min(AX.across,ac));
+  if(cal!==al||cac!==ac){ clamping=true; map.jumpTo({center:fromAxis(cal,cac)}); clamping=false; }
+});
 let rt; addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(()=>applyView(false,false),200)});
 
 const vis={relief:true,canopy:true};
@@ -368,7 +390,7 @@ const L=[
   [sw(`<rect x="1" y="1" width="26" height="12" rx="2" fill="${C.dog}" stroke="${C.dogLine}" stroke-dasharray="3 2"/>`),'Dog run'],
   [sw(`<line x1="1" y1="7" x2="27" y2="7" stroke="${C.pathCase}" stroke-width="5.5" stroke-linecap="round"/><line x1="1" y1="7" x2="27" y2="7" stroke="#fff" stroke-width="3.6" stroke-linecap="round"/>`),'Promenade or main path'],
   [sw(`<line x1="1" y1="7" x2="27" y2="7" stroke="${C.pathCase}" stroke-width="3" stroke-linecap="round"/><line x1="1" y1="7" x2="27" y2="7" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/>`),'Footpath'],
-  [sw(`<line x1="1" y1="7" x2="27" y2="7" stroke="#fff" stroke-width="5" stroke-linecap="round"/><line x1="1" y1="7" x2="27" y2="7" stroke="${C.cycle}" stroke-width="3" stroke-linecap="round"/>`),'Bike path / Greenway'],
+  [sw(`<line x1="1" y1="7" x2="27" y2="7" stroke="${C.pathCase}" stroke-width="6" stroke-linecap="round"/><line x1="1" y1="7" x2="27" y2="7" stroke="#fff" stroke-width="4.4" stroke-linecap="round"/><line x1="3" y1="7" x2="25" y2="7" stroke="${C.cycle}" stroke-width="1.4" stroke-dasharray="4 3"/>`),'Bike path / Greenway'],
   [sw(`<line x1="1" y1="7" x2="27" y2="7" stroke="${C.steps}" stroke-width="6" stroke-dasharray="1.6 1.6"/>`),'Steps'],
   [sw(`<line x1="1" y1="7" x2="27" y2="7" stroke="${C.wall}" stroke-width="1.4"/>`),'Retaining wall'],
   [sw(`<line x1="1" y1="7" x2="27" y2="7" stroke="${C.bridgeCase}" stroke-width="7"/><line x1="1" y1="7" x2="27" y2="7" stroke="#fff" stroke-width="4.5"/>`),'Bridge or viaduct'],
