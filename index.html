@@ -286,7 +286,7 @@ map.on('load',async()=>{
   applyView(true,false);
 });
 
-let view='grid';
+let view='grid', fitAll=null;
 function applyView(first, animate=true){
   const bearing = view==='grid' ? gridBearing() : 0;
   const padL = innerWidth>560?330:24, pad=24;
@@ -299,16 +299,18 @@ function applyView(first, animate=true){
     // the container can be zero-sized while the page is still being laid out (e.g. inside an embedding frame):
     // keep the orientation, skip the fit, and fit again once it has a real size
     if (!(w>80 && h>80)) { map.setBearing(bearing); document.getElementById('north').style.transform=`rotate(${-bearing}deg)`; return; }
-    const mpp=Math.max(spanX/w, spanY/h);
-    const zoom=Math.log2(78271.517*Math.cos(SECTION_CENTER[1]*Math.PI/180)/mpp);
-    if (!isFinite(zoom)) return;
+    const k=78271.517*Math.cos(SECTION_CENTER[1]*Math.PI/180);
+    const zoomAll=Math.log2(k/Math.max(spanX/w, spanY/h));      // whole park: the zoom-out limit
+    const zoom=Math.log2(k/Math.max(1300/w, 2800/h));           // opening view: ~2.8 km of the park (about 40 blocks)
+    if (!isFinite(zoom)||!isFinite(zoomAll)) return;
+    fitAll=zoomAll;
     // shift the centre so the section sits in the visible area beside/above the panel
     cam={center:SECTION_CENTER, zoom, offset:[(padL-pad)/2, innerWidth>560?0:-(innerHeight*0.42)/2]};
   } else {
     cam = map.cameraForBounds(SLICE,{padding:{top:pad,bottom:pad,left:padL,right:pad},bearing});
     if(!cam) return;
   }
-  if (view==='grid' && cam.zoom) map.setMinZoom(Math.max(10,cam.zoom-0.05));
+  if (view==='grid' && fitAll) map.setMinZoom(Math.max(10,fitAll-0.05));
   const opts={...cam,bearing, duration: (animate && !matchMedia('(prefers-reduced-motion: reduce)').matches)?900:0};
   map.easeTo(opts);
   document.getElementById('north').style.transform=`rotate(${-bearing}deg)`;
