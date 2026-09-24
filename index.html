@@ -131,8 +131,6 @@ const style = {
   glyphs: BASE + 'fonts/{fontstack}/{range}.pbf',
   sources:{
     land:{type:'geojson',data:D('land.geojson')},
-    deepwater:{type:'geojson',data:D('deepwater.geojson')},
-    waterlines:{type:'geojson',data:D('waterlines.geojson')},
     landmarks:{type:'geojson',data:D('landmarks.geojson')},
     hoods:{type:'geojson',data:D('hoods.geojson')},
     rail:{type:'geojson',data:D('rail.geojson')},
@@ -165,8 +163,6 @@ const style = {
   layers:[
     {id:'bg',type:'background',paint:{'background-color':C.paper}},
     {id:'water',type:'fill',source:'water',paint:{'fill-color':C.water}},
-    {id:'deep',type:'fill',source:'deepwater',paint:{'fill-color':C.waterDeep,'fill-opacity':['match',['get','i'],0,0.45,0.8]}},
-    {id:'waterline',type:'line',source:'waterlines',paint:{'line-color':C.waterLine,'line-opacity':['match',['get','i'],0,0.75,1,0.5,2,0.32,0.2],'line-width':['interpolate',['linear'],['zoom'],13,0.5,17,1.1]}},
     {id:'land',type:'fill',source:'land',paint:{'fill-color':C.land}},
     {id:'pier',type:'fill',source:'pier',paint:{'fill-color':C.land,'fill-outline-color':'#C2BFB6'}},
     {id:'park-other',type:'fill',source:'park',paint:{'fill-color':C.park}},
