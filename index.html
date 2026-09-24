@@ -96,7 +96,7 @@ details[open] summary::before{content:"▾ ";}
       <label><input type="radio" name="shape" id="shape-stretch" value="stretch" checked> Widened</label>
       <label><input type="radio" name="shape" id="shape-true" value="true"> True scale</label>
     </div>
-    <p class="note" id="stretch-note">Crosstown distances are drawn 1.6× wider so the park is easier to read. Uptown–downtown distances stay true.</p>
+    <p class="note" id="stretch-note">Crosstown distances are drawn 2× wider so the park is easier to read. Uptown–downtown distances stay true.</p>
     <div class="toggles">
       <label><input type="checkbox" id="t-relief" checked> Relief</label>
       <label><input type="checkbox" id="t-canopy" checked> Tree canopy</label>
@@ -156,7 +156,7 @@ function toAxis(ll){ const k=Math.cos(SECTION_CENTER[1]*Math.PI/180);
 function fromAxis(al,ac){ const k=Math.cos(SECTION_CENTER[1]*Math.PI/180);
   const dx=al*Math.sin(AX.a)+ac*Math.cos(AX.a), dy=al*Math.cos(AX.a)-ac*Math.sin(AX.a);
   return [SECTION_CENTER[0]+dx/(k*111320), SECTION_CENTER[1]+dy/110540]; }
-const STRETCH=1.6;
+const STRETCH=2;   // 2× crosstown (Robert, 2026-09-24; was 1.6)
 let K=STRETCH; try{ if(localStorage.getItem('rp-shape')==='true') K=1; }catch(e){}
 function sPt(p,k){ const [al,ac]=toAxis({lng:p[0],lat:p[1]}); return fromAxis(al,ac*k); }
 const mapC=(c,fn)=> typeof c[0]==='number' ? fn(c) : c.map(x=>mapC(x,fn));
