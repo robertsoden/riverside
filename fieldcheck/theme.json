@@ -1,0 +1,918 @@
+{
+  "id": "riverside_field_check",
+  "title": {
+    "en": "Riverside Park field check"
+  },
+  "description": {
+    "en": "A walk-around checklist for Riverside Park (Manhattan). Tap a stairway, path, drinking fountain, toilet, playground, court or park entrance and answer the simple questions; your answers go straight into OpenStreetMap. The blue numbered pins are guidance stops for the field check and are not editable."
+  },
+  "shortDescription": {
+    "en": "Check stairs, paths, fountains, toilets, playgrounds and entrances in Riverside Park"
+  },
+  "icon": "./assets/layers/stairs/stairs.svg",
+  "startLat": 40.8105,
+  "startLon": -73.965,
+  "startZoom": 16,
+  "defaultBackgroundId": "osm",
+  "layers": [
+    {
+      "id": "riverside_stops",
+      "name": {
+        "en": "Field-check stops"
+      },
+      "description": {
+        "en": "Numbered guidance pins for the Riverside Park field check. These come from robertsoden.io, not from OpenStreetMap, and cannot be edited here."
+      },
+      "source": {
+        "geoJson": "https://robertsoden.io/riverside/fieldcheck/stops.geojson",
+        "osmTags": "id~*"
+      },
+      "minzoom": 13,
+      "title": {
+        "render": {
+          "en": "Stop {n}: {title}"
+        }
+      },
+      "pointRendering": [
+        {
+          "location": [
+            "point",
+            "centroid"
+          ],
+          "marker": [
+            {
+              "icon": "circle",
+              "color": "#1d4ed8"
+            }
+          ],
+          "iconSize": "22,22",
+          "anchor": "center",
+          "label": "<div class='bg-white rounded px-1 text-sm font-bold'>{n}</div>"
+        }
+      ],
+      "lineRendering": [],
+      "tagRenderings": [
+        {
+          "id": "stop-kind",
+          "render": {
+            "en": "<b>What:</b> {kind}"
+          },
+          "condition": "kind~*"
+        },
+        {
+          "id": "stop-where",
+          "render": {
+            "en": "<b>Where:</b> {where}"
+          },
+          "condition": "where~*"
+        },
+        {
+          "id": "stop-hint",
+          "render": {
+            "en": "<b>What to check:</b> {hint}"
+          },
+          "condition": "hint~*"
+        },
+        {
+          "id": "stop-osm-link",
+          "render": {
+            "en": "This stop is about OpenStreetMap object <b>{osm}</b>: <a href='{url}' target='_blank' rel='noopener'>open it on openstreetmap.org</a>. On this map, tap the matching stairway, path or point near this pin to answer its questions."
+          },
+          "condition": "url~*"
+        },
+        {
+          "id": "stop-not-editable",
+          "render": {
+            "en": "<i>This pin is guidance only. It is not an OpenStreetMap object and has no questions.</i>"
+          }
+        }
+      ],
+      "allowMove": false,
+      "isCounted": false
+    },
+    {
+      "builtin": "stairs",
+      "hideTagRenderingsWithLabels": [
+        "multilevels",
+        "conveying",
+        "handrail",
+        "tactile_writing",
+        "tactile_writing_language",
+        "incline"
+      ],
+      "override": {
+        "minzoom": 15,
+        "name": {
+          "en": "Stairs"
+        },
+        "description": {
+          "en": "Stairways in the park (highway=steps). Tap one to record the number of steps, handrails, which way is up, ramps, lighting and surface."
+        },
+        "=lineRendering": [
+          {
+            "color": "#b45309",
+            "width": 8,
+            "dashArray": "2 3",
+            "imageAlongWay": "./assets/png/oneway.png"
+          }
+        ],
+        "tagRenderings+": [
+          {
+            "id": "stairs-step_count",
+            "question": {
+              "en": "How many steps are there on this stairway?"
+            },
+            "questionHint": {
+              "en": "Count every step from the bottom to the top, including landings only as steps if you actually step up. If the stairway has several flights with landings in between, count all the steps together."
+            },
+            "render": {
+              "en": "This stairway has <b>{step_count}</b> steps"
+            },
+            "freeform": {
+              "key": "step_count",
+              "type": "pnat"
+            }
+          },
+          {
+            "id": "stairs-handrail",
+            "question": {
+              "en": "Is there a handrail on these stairs?"
+            },
+            "questionHint": {
+              "en": "A handrail is a rail you can hold while going up or down. Look at both edges of the stairway and at the middle."
+            },
+            "mappings": [
+              {
+                "if": {
+                  "and": [
+                    "handrail=yes",
+                    "handrail:left=yes",
+                    "handrail:right=yes",
+                    "handrail:center=yes"
+                  ]
+                },
+                "then": {
+                  "en": "Handrails on <b>both sides and down the middle</b>"
+                }
+              },
+              {
+                "if": {
+                  "and": [
+                    "handrail=yes",
+                    "handrail:left=yes",
+                    "handrail:right=yes"
+                  ]
+                },
+                "then": {
+                  "en": "Handrails on <b>both sides</b> (none in the middle)"
+                },
+                "addExtraTags": [
+                  "handrail:center=no"
+                ]
+              },
+              {
+                "if": {
+                  "and": [
+                    "handrail=yes",
+                    "handrail:center=no"
+                  ]
+                },
+                "then": {
+                  "en": "A handrail on <b>one side only</b>"
+                },
+                "addExtraTags": [
+                  "handrail:left=",
+                  "handrail:right="
+                ]
+              },
+              {
+                "if": "handrail=no",
+                "then": {
+                  "en": "<b>No handrail</b> at all"
+                },
+                "addExtraTags": [
+                  "handrail:left=",
+                  "handrail:right=",
+                  "handrail:center="
+                ]
+              },
+              {
+                "if": "handrail=yes",
+                "then": {
+                  "en": "There is a handrail (which sides is not recorded yet)"
+                },
+                "hideInAnswer": true
+              }
+            ]
+          },
+          {
+            "id": "stairs-incline",
+            "question": {
+              "en": "Follow the arrows drawn on this stairway on the map (they point roughly {direction_absolute()}). Walking in the direction of the arrows, do the stairs go up or down?"
+            },
+            "questionHint": {
+              "en": "Every line on the map has a drawing direction, shown here by the small arrows along the stairway. 'Up' means the stairs climb when you walk the way the arrows point; 'down' means they descend. If you cannot see arrows, zoom in on the stairway."
+            },
+            "mappings": [
+              {
+                "if": "incline=up",
+                "then": {
+                  "en": "Walking the way the arrows point (roughly {direction_absolute()}), the stairs go <b>up</b>"
+                }
+              },
+              {
+                "if": "incline=down",
+                "then": {
+                  "en": "Walking the way the arrows point (roughly {direction_absolute()}), the stairs go <b>down</b>"
+                }
+              },
+              {
+                "if": "incline~*",
+                "then": {
+                  "en": "The incline is recorded as <b>{incline}</b>"
+                },
+                "hideInAnswer": true
+              }
+            ]
+          },
+          {
+            "id": "stairs-wheelchair",
+            "question": {
+              "en": "Can someone using a wheelchair get past this stairway?"
+            },
+            "questionHint": {
+              "en": "Stairs themselves are never wheelchair-accessible. Answer 'yes' only if a ramp or lift right next to the stairs lets a wheelchair user make the same trip."
+            },
+            "mappings": [
+              {
+                "if": "wheelchair=yes",
+                "then": {
+                  "en": "<b>Yes</b>: a ramp or lift right beside these stairs lets a wheelchair user get past"
+                }
+              },
+              {
+                "if": "wheelchair=limited",
+                "then": {
+                  "en": "<b>Only with help</b>: there is a way around, but it is difficult"
+                }
+              },
+              {
+                "if": "wheelchair=no",
+                "then": {
+                  "en": "<b>No</b>: stairs only, no ramp or lift nearby"
+                }
+              }
+            ]
+          },
+          {
+            "id": "stairs-lit",
+            "question": {
+              "en": "Is this stairway lit at night?"
+            },
+            "questionHint": {
+              "en": "Look for lamp posts or wall lights along the stairs."
+            },
+            "mappings": [
+              {
+                "if": "lit=yes",
+                "then": {
+                  "en": "This stairway is <b>lit</b> at night"
+                }
+              },
+              {
+                "if": "lit=no",
+                "then": {
+                  "en": "This stairway is <b>not lit</b> at night"
+                }
+              }
+            ]
+          },
+          {
+            "id": "stairs-surface",
+            "question": {
+              "en": "What are the steps made of?"
+            },
+            "questionHint": {
+              "en": "Pick the material most of the steps are made of."
+            },
+            "mappings": [
+              {
+                "if": "surface=asphalt",
+                "then": {
+                  "en": "<b>Asphalt</b> (black-top)"
+                }
+              },
+              {
+                "if": "surface=concrete",
+                "then": {
+                  "en": "<b>Concrete</b>"
+                }
+              },
+              {
+                "if": "surface=paving_stones",
+                "then": {
+                  "en": "<b>Paving stones</b> or flat slabs with small, even gaps"
+                }
+              },
+              {
+                "if": "surface=sett",
+                "then": {
+                  "en": "<b>Sett</b>: squared-off cobbles / Belgian block"
+                }
+              },
+              {
+                "if": "surface=fine_gravel",
+                "then": {
+                  "en": "<b>Fine gravel</b> (small loose stones, packed)"
+                }
+              },
+              {
+                "if": "surface=dirt",
+                "then": {
+                  "en": "<b>Dirt</b> / bare earth"
+                }
+              },
+              {
+                "if": "surface=grass",
+                "then": {
+                  "en": "<b>Grass</b>"
+                }
+              },
+              {
+                "if": "surface~*",
+                "then": {
+                  "en": "The surface is recorded as <b>{surface}</b>"
+                },
+                "hideInAnswer": true
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "park_paths",
+      "name": {
+        "en": "Paths"
+      },
+      "description": {
+        "en": "Footpaths, shared paths, bike paths and pedestrian areas in the park. Tap one to record its surface, lighting, wheelchair use and width."
+      },
+      "source": {
+        "osmTags": {
+          "or": [
+            "highway=footway",
+            "highway=path",
+            "highway=cycleway",
+            "highway=pedestrian"
+          ]
+        }
+      },
+      "minzoom": 16,
+      "title": {
+        "render": {
+          "en": "Path"
+        },
+        "mappings": [
+          {
+            "if": "name~*",
+            "then": {
+              "en": "Path <i>{name}</i>"
+            }
+          },
+          {
+            "if": "highway=cycleway",
+            "then": {
+              "en": "Bike path"
+            }
+          },
+          {
+            "if": "highway=pedestrian",
+            "then": {
+              "en": "Pedestrian area"
+            }
+          }
+        ]
+      },
+      "pointRendering": [
+        {
+          "location": [
+            "point"
+          ],
+          "marker": [
+            {
+              "icon": "circle",
+              "color": "#15803d"
+            }
+          ],
+          "iconSize": "20,20",
+          "anchor": "center"
+        }
+      ],
+      "lineRendering": [
+        {
+          "color": {
+            "render": "#15803d",
+            "mappings": [
+              {
+                "if": "highway=cycleway",
+                "then": "#1d4ed8"
+              }
+            ]
+          },
+          "width": 6,
+          "dashArray": "8 4"
+        }
+      ],
+      "tagRenderings": [
+        "images",
+        {
+          "id": "path-surface",
+          "question": {
+            "en": "What is the surface of this path?"
+          },
+          "questionHint": {
+            "en": "Pick the material most of the path is made of."
+          },
+          "mappings": [
+            {
+              "if": "surface=asphalt",
+              "then": {
+                "en": "<b>Asphalt</b> (black-top)"
+              }
+            },
+            {
+              "if": "surface=concrete",
+              "then": {
+                "en": "<b>Concrete</b>"
+              }
+            },
+            {
+              "if": "surface=paving_stones",
+              "then": {
+                "en": "<b>Paving stones</b> or flat slabs with small, even gaps (hexagonal pavers count)"
+              }
+            },
+            {
+              "if": "surface=sett",
+              "then": {
+                "en": "<b>Sett</b>: squared-off cobbles / Belgian block"
+              }
+            },
+            {
+              "if": "surface=fine_gravel",
+              "then": {
+                "en": "<b>Fine gravel</b> (small loose stones, packed)"
+              }
+            },
+            {
+              "if": "surface=dirt",
+              "then": {
+                "en": "<b>Dirt</b> / bare earth"
+              }
+            },
+            {
+              "if": "surface=grass",
+              "then": {
+                "en": "<b>Grass</b>"
+              }
+            },
+            {
+              "if": "surface~*",
+              "then": {
+                "en": "The surface is recorded as <b>{surface}</b>"
+              },
+              "hideInAnswer": true
+            }
+          ]
+        },
+        {
+          "id": "path-lit",
+          "question": {
+            "en": "Is this path lit at night?"
+          },
+          "questionHint": {
+            "en": "Look for lamp posts along the path."
+          },
+          "mappings": [
+            {
+              "if": "lit=yes",
+              "then": {
+                "en": "This path is <b>lit</b> at night"
+              }
+            },
+            {
+              "if": "lit=no",
+              "then": {
+                "en": "This path is <b>not lit</b> at night"
+              }
+            }
+          ]
+        },
+        {
+          "id": "path-wheelchair",
+          "question": {
+            "en": "Could someone using a wheelchair travel along this path?"
+          },
+          "questionHint": {
+            "en": "Think about steps, steep slopes, big cracks, loose gravel and width."
+          },
+          "mappings": [
+            {
+              "if": "wheelchair=yes",
+              "then": {
+                "en": "<b>Yes</b>: smooth, wide enough and no steps"
+              }
+            },
+            {
+              "if": "wheelchair=limited",
+              "then": {
+                "en": "<b>Partly</b>: possible, but there are rough, steep or narrow bits"
+              }
+            },
+            {
+              "if": "wheelchair=no",
+              "then": {
+                "en": "<b>No</b>: steps, a steep slope or a surface a wheelchair cannot use"
+              }
+            }
+          ]
+        },
+        {
+          "id": "path-width",
+          "question": {
+            "en": "Roughly how wide is this path?"
+          },
+          "questionHint": {
+            "en": "Measure or pace it across at a typical spot. You can type the number in metres or feet."
+          },
+          "render": {
+            "en": "This path is about <b>{width}</b> wide"
+          },
+          "freeform": {
+            "key": "width",
+            "type": "pfloat"
+          }
+        }
+      ],
+      "units": [
+        {
+          "width": {
+            "quantity": "distance",
+            "canonical": "m",
+            "denominations": [
+              "ft"
+            ]
+          }
+        }
+      ],
+      "allowMove": false
+    },
+    {
+      "builtin": "drinking_water",
+      "hideTagRenderingsWithLabels": [
+        "temperature-cold",
+        "bench-artwork"
+      ],
+      "override": {
+        "minzoom": 14,
+        "description": {
+          "en": "Drinking fountains and taps in the park. Tap one to say whether it works, whether you can fill a bottle, and whether it is shut off in winter."
+        }
+      }
+    },
+    {
+      "builtin": "toilet",
+      "override": {
+        "minzoom": 14,
+        "description": {
+          "en": "Public toilets in the park. Tap one to record opening hours, wheelchair access, a changing table and whether it closes for part of the year."
+        },
+        "tagRenderings+": [
+          "seasonal"
+        ]
+      }
+    },
+    {
+      "builtin": "playground",
+      "hideTagRenderingsWithLabels": [
+        "playground-operator",
+        "website",
+        "playground-email",
+        "playground-phone"
+      ],
+      "override": {
+        "minzoom": 14,
+        "description": {
+          "en": "Playgrounds in the park. Tap one to record its name, surface, lighting, age range, wheelchair access and hours."
+        },
+        "+tagRenderings": [
+          {
+            "id": "playground-name",
+            "question": {
+              "en": "What is the name of this playground?"
+            },
+            "questionHint": {
+              "en": "Use the name on the sign at the entrance, e.g. 'Hippo Playground'. Leave it if there is no sign."
+            },
+            "render": {
+              "en": "This playground is called <b>{name}</b>"
+            },
+            "freeform": {
+              "key": "name"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "builtin": "sport_pitch",
+      "hideTagRenderingsWithLabels": [
+        "sport_pitch-sport",
+        "sport-pitch-reservation",
+        "sport_pitch-phone",
+        "sport_pitch-email"
+      ],
+      "override": {
+        "minzoom": 14,
+        "name": {
+          "en": "Courts and fields"
+        },
+        "description": {
+          "en": "Basketball and handball courts, ball fields and tennis courts in the park. Tap one to record which sport is played there, its name and its surface."
+        },
+        "=presets": [
+          {
+            "title": {
+              "en": "a basketball court"
+            },
+            "tags": [
+              "leisure=pitch",
+              "sport=basketball"
+            ],
+            "description": {
+              "en": "Add a basketball court that is missing from the map"
+            }
+          },
+          {
+            "title": {
+              "en": "a court or field for another sport"
+            },
+            "tags": [
+              "leisure=pitch",
+              "fixme=Geometry to be drawn, added by MapComplete"
+            ],
+            "description": {
+              "en": "Add a court, pitch or field that is missing from the map; you will be asked which sport next"
+            }
+          }
+        ],
+        "+tagRenderings": [
+          {
+            "id": "pitch-sport",
+            "question": {
+              "en": "Which sport is this court or field for?"
+            },
+            "questionHint": {
+              "en": "Tick every sport it is set up for (for example lines or hoops for more than one game). Use 'other' for anything not listed."
+            },
+            "multiAnswer": true,
+            "render": {
+              "en": "This is used for <b>{sport}</b>"
+            },
+            "freeform": {
+              "key": "sport",
+              "addExtraTags": [
+                "fixme=Sport typed in by a volunteer; please check the value"
+              ]
+            },
+            "mappings": [
+              {
+                "if": "sport=basketball",
+                "then": {
+                  "en": "<b>Basketball</b>"
+                }
+              },
+              {
+                "if": "sport=handball",
+                "then": {
+                  "en": "<b>Handball</b> (wall-ball court)"
+                }
+              },
+              {
+                "if": "sport=soccer",
+                "then": {
+                  "en": "<b>Soccer</b>"
+                }
+              },
+              {
+                "if": "sport=baseball",
+                "then": {
+                  "en": "<b>Baseball</b> or softball"
+                }
+              },
+              {
+                "if": "sport=tennis",
+                "then": {
+                  "en": "<b>Tennis</b>"
+                }
+              }
+            ]
+          },
+          {
+            "id": "pitch-name",
+            "question": {
+              "en": "Does this court or field have a name? If so, what is it?"
+            },
+            "questionHint": {
+              "en": "Use the name on a sign, e.g. 'Riverside Clay Tennis Courts'. Skip this if there is no sign."
+            },
+            "render": {
+              "en": "This court or field is called <b>{name}</b>"
+            },
+            "freeform": {
+              "key": "name"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "park_entrances",
+      "name": {
+        "en": "Park entrances and gates"
+      },
+      "description": {
+        "en": "Places where you can get into or out of the park, such as gates and gaps in the wall or fence. Tap one to say whether it is open to everyone, whether a wheelchair fits through, and what its sign says."
+      },
+      "source": {
+        "osmTags": {
+          "or": [
+            "entrance~*",
+            "barrier=gate"
+          ]
+        }
+      },
+      "minzoom": 15,
+      "title": {
+        "render": {
+          "en": "Entrance"
+        },
+        "mappings": [
+          {
+            "if": "name~*",
+            "then": {
+              "en": "Entrance <i>{name}</i>"
+            }
+          },
+          {
+            "if": "barrier=gate",
+            "then": {
+              "en": "Gate"
+            }
+          }
+        ]
+      },
+      "pointRendering": [
+        {
+          "location": [
+            "point",
+            "centroid"
+          ],
+          "marker": [
+            {
+              "icon": "circle",
+              "color": "white"
+            },
+            {
+              "icon": {
+                "render": "./assets/layers/entrance/entrance.svg",
+                "mappings": [
+                  {
+                    "if": "barrier=gate",
+                    "then": "./assets/layers/barrier/barrier.svg"
+                  }
+                ]
+              }
+            }
+          ],
+          "iconSize": "30,30",
+          "anchor": "center"
+        }
+      ],
+      "lineRendering": [],
+      "tagRenderings": [
+        "images",
+        {
+          "id": "entrance-access",
+          "question": {
+            "en": "Can anyone get into the park here?"
+          },
+          "questionHint": {
+            "en": "Answer 'no' if the way through is permanently closed off or only for staff."
+          },
+          "mappings": [
+            {
+              "if": "access=yes",
+              "then": {
+                "en": "<b>Yes</b>: anyone can come in here"
+              }
+            },
+            {
+              "if": "access=no",
+              "then": {
+                "en": "<b>No</b>: you cannot get in here (closed off or not for the public)"
+              }
+            },
+            {
+              "if": "access=private",
+              "then": {
+                "en": "<b>No</b>: this way in is private (staff or residents only)"
+              },
+              "hideInAnswer": true
+            },
+            {
+              "if": "access=permissive",
+              "then": {
+                "en": "<b>Yes</b>: the public may come in here, although the owner could close it"
+              },
+              "hideInAnswer": true
+            }
+          ]
+        },
+        {
+          "id": "entrance-locked",
+          "question": {
+            "en": "Is this gate locked right now?"
+          },
+          "questionHint": {
+            "en": "Some gates are only locked at night. Answer for what you see when you are there and mention the time in a note if it matters."
+          },
+          "condition": "barrier=gate",
+          "mappings": [
+            {
+              "if": "locked=yes",
+              "then": {
+                "en": "This gate is <b>locked</b>"
+              }
+            },
+            {
+              "if": "locked=no",
+              "then": {
+                "en": "This gate is <b>not locked</b>"
+              }
+            }
+          ]
+        },
+        {
+          "id": "entrance-wheelchair",
+          "question": {
+            "en": "Could someone using a wheelchair (or pushing a stroller) get through here?"
+          },
+          "questionHint": {
+            "en": "Think about steps, a high kerb, a narrow gap or a turnstile."
+          },
+          "mappings": [
+            {
+              "if": "wheelchair=yes",
+              "then": {
+                "en": "<b>Yes</b>: level and wide enough for a wheelchair"
+              }
+            },
+            {
+              "if": "wheelchair=limited",
+              "then": {
+                "en": "<b>Partly</b>: a wheelchair can get through, but it is tight or has a small step"
+              }
+            },
+            {
+              "if": "wheelchair=no",
+              "then": {
+                "en": "<b>No</b>: steps, a turnstile or too narrow"
+              }
+            }
+          ]
+        },
+        {
+          "id": "entrance-name",
+          "question": {
+            "en": "Is there a sign naming this entrance? If so, what does it say?"
+          },
+          "questionHint": {
+            "en": "Only use a real name shown on a sign (for example a named gate). Skip this if there is no sign."
+          },
+          "render": {
+            "en": "This entrance is called <b>{name}</b>"
+          },
+          "freeform": {
+            "key": "name"
+          }
+        }
+      ],
+      "allowMove": {
+        "enableImproveAccuracy": true,
+        "enableRelocation": false
+      }
+    }
+  ]
+}
