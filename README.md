@@ -1,6 +1,6 @@
 # Riverside Park map
 
-An interactive map of Riverside Park, Manhattan, from West 59th to West 158th Street. It shows shaded relief and individual trees from the 2017 NYC LiDAR survey, paths, steps, retaining walls, playgrounds, monuments and other park features. The map is fixed to the Manhattan street grid.
+An interactive map of Riverside Park and Fort Washington Park, Manhattan, from West 59th Street to Dyckman Street. It shows shaded relief and individual trees from the 2017 NYC LiDAR survey, paths, steps, retaining walls, playgrounds, monuments and other park features. The map is fixed to the Manhattan street grid.
 
 It is a static site: `index.html` plus data, glyph, icon and library files. There is no build step and no server code.
 

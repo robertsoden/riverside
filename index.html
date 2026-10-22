@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="description" content="Riverside Park, Manhattan (West 59th–158th Street): an interactive map with LiDAR relief, individual trees, paths, steps and park amenities.">
+<meta name="description" content="Riverside Park and Fort Washington Park, Manhattan (West 59th Street to Dyckman Street): an interactive map with LiDAR relief, individual trees, paths, steps and park amenities.">
 <title>Riverside Park Map</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -79,14 +79,14 @@ details[open] summary::before{content:"▾ ";}
 </head>
 <body>
 <div class="stage">
-<div id="map" role="region" aria-label="Map of Riverside Park, West 59th to West 158th Street. Focus the map and use arrow keys to pan, plus and minus to zoom."></div>
+<div id="map" role="region" aria-label="Map of Riverside Park and Fort Washington Park, West 59th Street to Dyckman Street. Focus the map and use arrow keys to pan, plus and minus to zoom."></div>
 
 <div class="north" id="north" role="img" aria-label="North arrow"><svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><path d="M11 2 L15 13 L11 11 L7 13Z" fill="#2A332E"/><text x="11" y="21" text-anchor="middle" font-size="7" font-family="system-ui,sans-serif" font-weight="600" fill="#2A332E">N</text></svg></div>
 
 <aside class="panel" id="panel" aria-label="Map controls and legend">
   <div class="head">
     <h1>Riverside Park</h1>
-    <p class="sub">West 59th – West 158th Street · Manhattan</p>
+    <p class="sub">West 59th Street – Dyckman Street · Manhattan</p>
     <span class="tag">Draft</span>
     <div class="mbar"><button type="button" id="b-legend" aria-expanded="false" aria-controls="panel">Legend</button><button type="button" id="b-places" aria-expanded="false" aria-controls="panel">Places</button></div>
   </div>
@@ -124,7 +124,7 @@ details[open] summary::before{content:"▾ ";}
 (function(){
 const BASE = location.href.replace(/[#?].*$/,'').replace(/[^/]*$/,'');
 const D = n => BASE + 'data/' + n;
-const SLICE = [[-74.0009,40.7697],[-73.9435,40.8362]]; // whole frame, 59th–158th
+const SLICE = [[-74.025,40.7513],[-73.8949,40.888]]; // whole frame, 59th–Dyckman
 const GRID = 29; // Manhattan street grid, degrees east of true north (approx.)
 
 // palette — map is a single deliberate light look
@@ -140,7 +140,8 @@ const C = {
 };
 const ICONS=['monument','playground','toilets','water','dogrun','access','viewpoint','food','facility','history','bike','picnic','fitness','pool','launch','info','bikepark'];
 // relief lit from the screen's upper left for each orientation (true azimuths)
-const SECTION_CENTER=[-73.97218,40.80293]; // frame centre
+const SECTION_CENTER=[-73.97218,40.80293]; // stretch centre (the old frame centre; kept so the pre-rendered widened images stay valid)
+const FIT={al:2173, ac:-231};   // middle of the park in axis metres (59th–Dyckman along, Fort Washington's westward drift across)
 const RELIEF={gridPortrait:344, gridLandscape:254};
 const RELIEF_OPACITY=0.75; // softened from 1.0 at Robert's request (0.6 was too faint)
 const TREE_OPACITY=0.8; // softened from 1.0 at Robert's request
@@ -149,7 +150,7 @@ const TREE_OPACITY=0.8; // softened from 1.0 at Robert's request
 // Positions are measured along the park axis (the street grid, 29° east of north) and across it.
 // In the widened view every across-axis distance from the park's centre line is multiplied by K;
 // distances along the park are unchanged. Widened is the default; a reader's last choice is remembered.
-const AX={a:GRID*Math.PI/180, half:4300, across:1200};
+const AX={a:GRID*Math.PI/180, min:-4300, max:8600, across:1200};   // along: 59th .. Dyckman St; across: ±1.2 km (×K)
 function toAxis(ll){ const k=Math.cos(SECTION_CENTER[1]*Math.PI/180);
   const dx=(ll.lng-SECTION_CENTER[0])*k*111320, dy=(ll.lat-SECTION_CENTER[1])*110540;
   return [dx*Math.sin(AX.a)+dy*Math.cos(AX.a), dx*Math.cos(AX.a)-dy*Math.sin(AX.a)]; }
@@ -204,8 +205,8 @@ const style = {
     cliff:{type:'geojson',data:'rp://cliff.geojson'},
     city_wall:{type:'geojson',data:'rp://city_wall.geojson'},
     empty:{type:'geojson',data:{type:'FeatureCollection',features:[]}},
-    parkpt:{type:'geojson',data:{type:'FeatureCollection',features:[{type:'Feature',properties:{},geometry:{type:'Point',coordinates:[-73.9716,40.8030]}}]}},
-    riverlabel:{type:'geojson',data:{type:'FeatureCollection',features:[{type:'Feature',properties:{},geometry:{type:'Point',coordinates:[-73.99389,40.78521]}},{type:'Feature',properties:{m:1},geometry:{type:'Point',coordinates:[-73.97893,40.80578]}},{type:'Feature',properties:{},geometry:{type:'Point',coordinates:[-73.96397,40.82635]}}]}}, // mid-river; one label (m) when zoomed out, all three from z15 where only one fits on screen
+    parkpt:{type:'geojson',data:{type:'FeatureCollection',features:[{type:'Feature',properties:{name:'RIVERSIDE PARK'},geometry:{type:'Point',coordinates:[-73.9716,40.8030]}},{type:'Feature',properties:{name:'FORT WASHINGTON PARK'},geometry:{type:'Point',coordinates:[-73.94207,40.8533]}}]}},
+    riverlabel:{type:'geojson',data:{type:'FeatureCollection',features:[{type:'Feature',properties:{},geometry:{type:'Point',coordinates:[-73.99389,40.78521]}},{type:'Feature',properties:{m:1},geometry:{type:'Point',coordinates:[-73.97893,40.80578]}},{type:'Feature',properties:{},geometry:{type:'Point',coordinates:[-73.96397,40.82635]}},{type:'Feature',properties:{},geometry:{type:'Point',coordinates:[-73.95275,40.84644]}},{type:'Feature',properties:{},geometry:{type:'Point',coordinates:[-73.94269,40.86494]}}]}}, // mid-river; one label (m) when zoomed out, all three from z15 where only one fits on screen
     building:{type:'geojson',data:'rp://building.geojson'},
     road:{type:'geojson',data:'rp://road.geojson'},
     path:{type:'geojson',data:'rp://path.geojson'},
@@ -315,7 +316,7 @@ const style = {
     {id:'edge-fade',type:'fill',source:'edge',paint:{'fill-color':C.paper,'fill-opacity':['match',['get','k'],0,0.85,1,0.62,2,0.4,3,0.22,0.08]}},
     {id:'outside',type:'fill',source:'outside',paint:{'fill-color':C.paper}},
     {id:'park-label',type:'symbol',source:'parkpt',maxzoom:16.3,
-      layout:{'text-field':'RIVERSIDE PARK','text-font':['FiraSans-SemiBold'],'text-size':['interpolate',['linear'],['zoom'],12,12,16,18],'text-letter-spacing':0.3,'symbol-placement':'point'},
+      layout:{'text-field':['get','name'],'text-font':['FiraSans-SemiBold'],'text-size':['interpolate',['linear'],['zoom'],12,12,16,18],'text-letter-spacing':0.3,'symbol-placement':'point'},
       paint:{'text-color':C.parkLabel,'text-halo-color':'#E4ECDA','text-halo-width':1.6}}
   ]
 
@@ -371,9 +372,9 @@ function applyView(first, animate=true, limitsOnly=false){
   const bar = wide ? 0 : document.querySelector('.head').offsetHeight+8;   // phone: slim title bar at the top
   let cam;
   if (view==='grid'){
-    // fit the whole park along its own axis (59th–158th ≈ 7.6 km)
+    // fit the whole park along its own axis (59th–Dyckman ≈ 11.9 km)
     const w=map.getContainer().clientWidth-padL-pad, h=map.getContainer().clientHeight-2*pad-bar;
-    const [along,across]=[7650,1300*K];  // 59th–158th is 7,560 m along the grid; ~1% margin
+    const [along,across]=[12100,1300*K];  // 59th–Dyckman is 11,876 m along the grid; ~2% margin
     const [spanX,spanY]= [across,along];
     // the container can be zero-sized while the page is still being laid out (e.g. inside an embedding frame):
     // keep the orientation, skip the fit, and fit again once it has a real size
@@ -384,7 +385,7 @@ function applyView(first, animate=true, limitsOnly=false){
     if (!isFinite(zoom)||!isFinite(zoomAll)) return;
     fitAll=zoomAll;
     // shift the centre so the section sits in the visible area beside/above the panel
-    cam={center:SECTION_CENTER, zoom, offset:[(padL-pad)/2, bar/2]};
+    cam={center:fromAxis(FIT.al,FIT.ac*K), zoom, offset:[(padL-pad)/2, bar/2]};
   } else {
     cam = map.cameraForBounds(SLICE,{padding:{top:pad,bottom:pad,left:padL,right:pad},bearing});
     if(!cam) return;
@@ -397,7 +398,7 @@ function applyView(first, animate=true, limitsOnly=false){
   ensureSegments();
 }
 // keep the view on the park: the centre may move along the park axis
-// (59th to 158th) and a limited distance across it, never off into blank paper
+// (59th to Dyckman St) and a limited distance across it, never off into blank paper
 // switching shape: re-request every GeoJSON source through the rp:// protocol (which stretches by the new K),
 // re-stretch the inline sources and the relief/tree image corners, and keep the reader's place
 function syncShapeUI(){
@@ -426,7 +427,7 @@ let clamping=false;
 map.on('move',()=>{
   if(clamping) return;
   const [al,ac]=toAxis(map.getCenter());
-  const cal=Math.max(-AX.half,Math.min(AX.half,al)), cac=Math.max(-AX.across*K,Math.min(AX.across*K,ac));
+  const cal=Math.max(AX.min,Math.min(AX.max,al)), cac=Math.max(-AX.across*K,Math.min(AX.across*K,ac));
   if(cal!==al||cac!==ac){ clamping=true; map.jumpTo({center:fromAxis(cal,cac)}); clamping=false; }
 });
 // refit when the map's own size changes (first layout, rotation, window resize) until the reader moves the map
@@ -524,12 +525,12 @@ addEventListener('keydown',e=>{ if(e.key==='Escape' && panel.dataset.open) openS
 
 // text alternative: places list, grouped by street band, nearest cross street shown
 fetch(D('places.json')).then(r=>r.json()).then(pl=>{
-  const bands=[[140,158],[120,139],[100,119],[80,99],[59,79]]; // north to south, like the map
+  const bands=[[159,215,'159th St – Dyckman St'],[140,158],[120,139],[100,119],[80,99],[59,79]]; // north to south, like the map
   const ul=document.getElementById('list'); const esc=t=>String(t).replace(/[<&]/g,c=>c==='<'?'&lt;':'&amp;');
-  ul.innerHTML=bands.map(([a,b])=>{
+  ul.innerHTML=bands.map(([a,b,lab])=>{
     const rows=pl.filter(p=>p.near>=a&&p.near<=b);
     if(!rows.length) return '';
-    return `<li class="grp">${a}th – ${b}th St</li>`+rows.map(p=>`<li><button data-x="${p.lon}" data-y="${p.lat}"><span class="k">${p.name===p.label?"":esc(p.label)}</span><span>${esc(p.name)}</span><span class="near">W ${p.near}</span></button></li>`).join('');
+    return `<li class="grp">${lab||`${a}th – ${b}th St`}</li>`+rows.map(p=>`<li><button data-x="${p.lon}" data-y="${p.lat}"><span class="k">${p.name===p.label?"":esc(p.label)}</span><span>${esc(p.name)}</span><span class="near">W ${p.near}</span></button></li>`).join('');
   }).join('');
   ul.addEventListener('click',e=>{const b=e.target.closest('button'); if(!b)return;
     if(stageW()<=640) openSheet(null);   // phone: close the list so the place is visible
