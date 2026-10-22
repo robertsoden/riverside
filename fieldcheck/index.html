@@ -81,6 +81,12 @@ a.btn{text-decoration:none;display:inline-block}
 .map svg{display:block;width:100%;height:100%}
 .now{font-size:.82rem;color:var(--muted);margin-top:-4px}
 .hint{font-size:.88rem;color:var(--muted);margin:-6px 0 0}
+.photos .phlist{display:flex;flex-wrap:wrap;gap:8px}
+.photos .ph{margin:0;width:88px;font-size:.72rem;color:var(--muted);text-align:center}
+.photos .ph img{width:88px;height:88px;object-fit:cover;border-radius:8px;border:2px solid #d9a441;display:block}
+.photos .ph.sent img{border-color:var(--line)}
+.photos input[type=file]{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden}
+.photos label.btn{display:inline-block}
 fieldset{border:0;padding:0;margin:0;display:flex;flex-direction:column;gap:8px}
 legend{font-weight:500;padding:0;margin-bottom:8px}
 .opts{display:flex;flex-wrap:wrap;gap:6px}
@@ -128,7 +134,7 @@ textarea{min-height:64px;resize:vertical}
     <ol>
       <li>Open a stop and walk to the red mark on its map. The map is turned to the street grid: Riverside Drive runs up the right side and the river is to the left.</li>
       <li>Answer the questions by tapping. Where OpenStreetMap already has an answer it is shown under the question: check it and tap what you actually see. If something doesn't match the map, say so in the note.</li>
-      <li>Photos: use your phone's camera app (one wide, one close-up) and put the stop number, e.g. S12, in the note. Then tap <b>Save answer</b>.</li>
+      <li>Photos: tap <b>Take or add photos</b> on the stop (one wide, one close-up). They are sent with your name and the stop number. Then tap <b>Save answer</b>.</li>
     </ol>
     <p>The numbered <b>Entrance</b> stops are places where a mapped path meets the street, a sidewalk or a crossing. They have not been checked: say whether you can actually get into the park there and what you pass through. They run along the park edge, so you can do them as a separate walk.</p>
 
@@ -336,7 +342,7 @@ function card(s){
     body.append(fs);
   }
 
-  body.append(el('p', {class:'hint', text:'Photos: use the camera app, one wide and one close-up, and put ' + s.n + ' in the note.'}));
+  body.append(photoField(s));
 
   const note = el('fieldset', {}, el('legend', {text:"Anything that doesn't match the map?"}),
     el('textarea', {id:`n-${s.id}`, 'aria-label':'Note', placeholder:'For example: the stairs end at a fence, or there are two separate play areas', oninput:e=>{ d.note = e.target.value; keepDraft(s.id); }}));
@@ -417,6 +423,84 @@ async function flushQueue(){
   render();
   return q.length - left.length;
 }
+// ---- photos: taken or picked on the phone, shrunk, kept in IndexedDB, posted to the Apps Script receiver
+const PHOTOS = {"url": "https://script.google.com/macros/s/AKfycbyTmTslV2XF3eg_yjjJSRakNUyUyhvOxNioNAm1vty9l1bFA51_OHGawu6QC_Bkyy3izA/exec"};
+const pdb = {
+  open(){ return new Promise((res, rej) => { try { const r = indexedDB.open('rp-photos', 1); r.onupgradeneeded = () => r.result.createObjectStore('p', {keyPath:'id'}); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); } catch (e){ rej(e); } }); },
+  async all(){ const d = await this.open(); return new Promise((res, rej) => { const q = d.transaction('p').objectStore('p').getAll(); q.onsuccess = () => res(q.result || []); q.onerror = () => rej(q.error); }); },
+  async put(rec){ const d = await this.open(); return new Promise((res, rej) => { const t = d.transaction('p', 'readwrite'); t.objectStore('p').put(rec); t.oncomplete = () => res(); t.onerror = () => rej(t.error); }); }
+};
+let photos = [];                       // in-memory copy of the IndexedDB records (data kept until sent)
+let photoBusy = false;
+function stopPhotos(id){ return photos.filter(p => p.stop === id); }
+function unsentPhotos(){ return photos.filter(p => !p.sent); }
+
+async function loadBitmap(file){
+  try { return await createImageBitmap(file, {imageOrientation:'from-image'}); } catch (e){}
+  return new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = URL.createObjectURL(file); });
+}
+async function shrink(file){
+  const im = await loadBitmap(file);
+  const w = im.width || im.naturalWidth, h = im.height || im.naturalHeight;
+  const draw = (max, q) => { const k = Math.min(1, max / Math.max(w, h)); const c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round(w * k)); c.height = Math.max(1, Math.round(h * k));
+    c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); return c.toDataURL('image/jpeg', q); };
+  return {data: draw(1600, 0.82).split(',')[1], thumb: draw(240, 0.6)};
+}
+async function addPhotos(s, files, msg){
+  if (!files || !files.length) return;
+  const by = whoAmI();
+  if (!by){ msg.className = 'msg err'; msg.textContent = 'Type your name at the top first.'; document.getElementById('who').focus(); return; }
+  msg.className = 'msg'; msg.textContent = 'Preparing…';
+  for (const f of files){
+    try {
+      const {data, thumb} = await shrink(f);
+      const rec = {id: s.id + '-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6), stop:s.id, n:s.n, kind:s.kind, by:by,
+                   at:new Date().toISOString(), type:'image/jpeg', data:data, thumb:thumb, sent:false, file:''};
+      photos.push(rec); await pdb.put(rec);
+    } catch (e){ msg.className = 'msg err'; msg.textContent = 'Could not read that photo.'; }
+  }
+  renderPhotos(s); msg.textContent = '';
+  flushPhotos();
+}
+// Post one photo. The receiver answers JSON ({ok:true,file}) with CORS headers; a text/plain body avoids a preflight.
+async function sendPhoto(rec){
+  if (!/^https:/.test(PHOTOS.url)) throw new Error('no receiver yet');
+  const body = JSON.stringify({stop:rec.stop, n:rec.n, kind:rec.kind, by:rec.by, at:rec.at, type:rec.type, data:rec.data});
+  const r = await fetch(PHOTOS.url, {method:'POST', headers:{'Content-Type':'text/plain'}, body:body, redirect:'follow'});
+  const j = await r.json();
+  if (!j.ok) throw new Error(j.error || 'receiver refused');
+  return j.file;
+}
+async function flushPhotos(){
+  if (photoBusy) return 0; photoBusy = true;
+  let n = 0;
+  try {
+    for (const rec of unsentPhotos()){
+      try { rec.file = await sendPhoto(rec); rec.sent = true; rec.data = ''; await pdb.put(rec); n++; }
+      catch (e){ break; }                                   // no signal or receiver down: keep the rest for later
+      if (openId === rec.stop) renderPhotos(STOPS.find(x => x.id === rec.stop));
+    }
+  } finally { photoBusy = false; }
+  const m = document.getElementById('syncmsg'), u = unsentPhotos().length;
+  if (m && u) m.textContent = `${u} photo${u > 1 ? 's' : ''} still unsent (no signal?)`;
+  return n;
+}
+function renderPhotos(s){
+  const box = document.getElementById('ph-list-' + s.id); if (!box) return;
+  box.replaceChildren(...stopPhotos(s.id).map(p => el('figure', {class:'ph' + (p.sent ? ' sent' : '')},
+    el('img', {src:p.thumb, alt:'photo for stop ' + s.n}), el('figcaption', {text:p.sent ? 'Sent' : 'Not sent yet'}))));
+}
+function photoField(s){
+  const msg = el('span', {class:'msg', id:'ph-msg-' + s.id});
+  const inp = el('input', {type:'file', accept:'image/*', multiple:'multiple', id:'ph-' + s.id, onchange:e => { addPhotos(s, Array.from(e.target.files), msg); e.target.value = ''; }});
+  const fs = el('fieldset', {class:'photos'}, el('legend', {text:'Photos: one wide, one close-up'}),
+    el('div', {class:'phlist', id:'ph-list-' + s.id}),
+    el('div', {class:'actions'}, el('label', {class:'btn', for:'ph-' + s.id, text:'Take or add photos'}), inp, msg));
+  setTimeout(() => renderPhotos(s), 0);
+  return fs;
+}
+
 async function save(s, btn, msg){
   const d = getDraft(s.id);
   const by = whoAmI();
@@ -433,11 +517,11 @@ async function save(s, btn, msg){
   requestClose();
 }
 function allAnswersText(){
-  const out = {by: whoAmI(), exported: new Date().toISOString(), saved: Object.values(saved), unsent: queue().map(b => b.stop),
+  const out = {by: whoAmI(), exported: new Date().toISOString(), saved: Object.values(saved), unsent: queue().map(b => b.stop), photos: photos.map(p => ({stop:p.stop, by:p.by, at:p.at, sent:p.sent, file:p.file})),
                drafts: Object.fromEntries(STOPS.filter(s => store.get('rp-draft-' + s.id)).map(s => [s.id, store.get('rp-draft-' + s.id)]))};
   return JSON.stringify(out);
 }
-document.getElementById('resend').addEventListener('click', async () => { const m = document.getElementById('syncmsg'); m.textContent = 'Sending…'; const n = await flushQueue(); if (!queue().length) m.textContent = n ? `Sent ${n}.` : 'Nothing unsent.'; });
+document.getElementById('resend').addEventListener('click', async () => { const m = document.getElementById('syncmsg'); m.textContent = 'Sending…'; const n = await flushQueue() + await flushPhotos(); if (!queue().length && !unsentPhotos().length) m.textContent = n ? `Sent ${n}.` : 'Nothing unsent.'; });
 document.getElementById('copyall').addEventListener('click', async () => { const m = document.getElementById('syncmsg'); try { await navigator.clipboard.writeText(allAnswersText()); m.textContent = 'Copied. Paste into a message to Robert.'; } catch (e){ m.textContent = 'Could not copy on this phone; use Email instead.'; } });
 document.getElementById('mailall').addEventListener('click', e => { e.currentTarget.href = 'mailto:' + EMAIL + '?subject=' + encodeURIComponent('Riverside field check answers (' + whoAmI() + ')') + '&body=' + encodeURIComponent(allAnswersText()); });
 document.getElementById('who').value = store.get('rp-by') || '';
@@ -475,8 +559,9 @@ render();
 Object.assign(saved, store.get('rp-saved') || {});
 render();
 flushQueue();
-document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') flushQueue(); });
-window.addEventListener('online', flushQueue);
+pdb.all().then(all => { photos = all; if (openId) renderPhotos(STOPS.find(x => x.id === openId)); flushPhotos(); }).catch(() => {});
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible'){ flushQueue(); flushPhotos(); } });
+window.addEventListener('online', () => { flushQueue(); flushPhotos(); });
 function showBanner(t){ const b = document.getElementById('banner'); b.textContent = t; b.hidden = false; }
 </script>
 </body></html>
