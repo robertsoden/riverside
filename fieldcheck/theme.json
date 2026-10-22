@@ -201,7 +201,7 @@
                 "then": {
                   "en": "There is a handrail (which sides is not recorded yet)"
                 },
-                "hideInAnswer": true
+                "showAsOptionIf": false
               }
             ]
           },
@@ -231,7 +231,7 @@
                 "then": {
                   "en": "The incline is recorded as <b>{incline}</b>"
                 },
-                "hideInAnswer": true
+                "showAsOptionIf": false
               }
             ]
           },
@@ -343,7 +343,7 @@
                 "then": {
                   "en": "The surface is recorded as <b>{surface}</b>"
                 },
-                "hideInAnswer": true
+                "showAsOptionIf": false
               }
             ]
           }
@@ -482,7 +482,7 @@
               "then": {
                 "en": "The surface is recorded as <b>{surface}</b>"
               },
-              "hideInAnswer": true
+              "showAsOptionIf": false
             }
           ]
         },
@@ -829,14 +829,14 @@
               "then": {
                 "en": "<b>No</b>: this way in is private (staff or residents only)"
               },
-              "hideInAnswer": true
+              "showAsOptionIf": false
             },
             {
               "if": "access=permissive",
               "then": {
                 "en": "<b>Yes</b>: the public may come in here, although the owner could close it"
               },
-              "hideInAnswer": true
+              "showAsOptionIf": false
             }
           ]
         },
