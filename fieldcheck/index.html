@@ -87,6 +87,7 @@ a.btn{text-decoration:none;display:inline-block}
 .photos .ph.sent img{border-color:var(--line)}
 .photos input[type=file]{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden}
 .photos label.btn{display:inline-block}
+.hint.remote{color:#2E7867;margin:0 0 6px}
 fieldset{border:0;padding:0;margin:0;display:flex;flex-direction:column;gap:8px}
 legend{font-weight:500;padding:0;margin-bottom:8px}
 .opts{display:flex;flex-wrap:wrap;gap:6px}
@@ -173,11 +174,10 @@ function questions(s){
     {id:'ramp', label:'Is there a channel for wheeling a bike or stroller?', opts:[['yes','Yes'],['no','No']], when:here}];
   if (s.kind === 'restroom') return [
     {id:'present', label:'Is there a restroom building here?', opts:[['yes','Yes'],['no','No'],['unsure',"Can't find it"]]},
-    {id:'open_now', label:'Is it open right now?', opts:[['open','Open'],['closed','Closed or locked']], when:here},
     {id:'hours', label:'Hours on the sign (type them, or photograph the sign)', type:'text', when:here},
     {id:'seasonal', label:'Does a sign say it closes for part of the year?', opts:[['yes','Yes'],['no','No'],['nosign','No sign']], when:here},
     {id:'step_free', label:'Can you get in without a step?', opts:[['yes','Yes'],['partly','Partly (a lip or tight door)'],['no','No']], when:here},
-    {id:'changing', label:'Is there a baby changing table?', opts:[['yes','Yes'],['no','No'],['unsure',"Couldn't check"]], when:a => here(a) && a.open_now === 'open'}];
+    {id:'changing', label:'Is there a baby changing table?', opts:[['yes','Yes'],['no','No'],['unsure',"Couldn't check"]], when:here}];
   if (s.kind === 'fountain'){
     const q = [
     {id:'present', label:'Is there a drinking fountain here?', opts:[['yes','Yes'],['no','No'],['unsure',"Can't find it"]]},
@@ -265,7 +265,7 @@ function el(tag, attrs={}, ...kids){
 // other than "can't tell", and nobody flagged it for another visit. Text questions are optional.
 function status(s){
   const b = saved[s.id];
-  if (!b) return 'todo';
+  if (!b) return remote[s.id] ? 'done' : 'todo';
   if (b.followup) return 'partial';
   const a = b.answers || {};
   for (const q of questions(s)){
@@ -279,7 +279,8 @@ function status(s){
 function render(){
   const st = STOPS.map(status);
   const done = st.filter(x => x === 'done').length, part = st.filter(x => x === 'partial').length;
-  document.getElementById('count').textContent = `${done} done` + (part ? `, ${part} partly` : '') + ` of ${STOPS.length}`;
+  const mine = STOPS.filter(s => saved[s.id] && status(s) === 'done').length;
+  document.getElementById('count').textContent = `${done} done` + (part ? `, ${part} partly` : '') + ` of ${STOPS.length}` + (done > mine ? ` (${mine} on this phone)` : '');
   document.getElementById('barfill').style.width = (100 * done / STOPS.length) + '%';
   for (const b of document.querySelectorAll('.tabs button[data-f]')) b.setAttribute('aria-pressed', String(b.dataset.f === filter));
   for (const b of document.querySelectorAll('.vbtn')) b.setAttribute('aria-pressed', String(b.dataset.v === view));
@@ -306,7 +307,7 @@ function card(s){
     el('span', {class:'nn' + (s.tool === 'mapcomplete' ? ' mc' : ''), text:s.n, title:s.tool === 'mapcomplete' ? 'Do this one in MapComplete' : ''}),
     el('span', {class:'chip k-' + s.kind, text:s.chip || KIND[s.kind]}),
     el('span', {}, el('div', {class:'t', text:s.title}), el('div', {class:'w', text:s.where})),
-    el('span', {class:'st', text:stt === 'done' ? 'Done' : stt === 'partial' ? 'Partly done' : 'To do'}));
+    el('span', {class:'st', text:stt === 'done' ? (remoteOnly(s.id) ? 'Done — ' + remoteLabel(s.id) : 'Done') : stt === 'partial' ? 'Partly done' : 'To do'}));
   wrap.append(row);
   if (!isOpen) return wrap;
 
@@ -342,6 +343,7 @@ function card(s){
     body.append(fs);
   }
 
+  if (remoteOnly(s.id)) body.append(el('p', {class:'hint remote', text:'Already saved by ' + remoteLabel(s.id) + ' on another phone. You can still answer it.'}));
   body.append(photoField(s));
 
   const note = el('fieldset', {}, el('legend', {text:"Anything that doesn't match the map?"}),
@@ -500,6 +502,31 @@ function photoField(s){
   setTimeout(() => renderPhotos(s), 0);
   return fs;
 }
+// ---- shared progress: stops already answered on any phone, read back from the receiver's done list
+let remote = store.get('rp-remote') || {};      // stopId -> {by, at}
+let remoteAt = 0, remoteBusy = false;
+function remoteOnly(id){ return !saved[id] && !!remote[id]; }
+async function fetchDone(){
+  if (remoteBusy || !/^https:/.test(PHOTOS.url)) return;
+  remoteBusy = true;
+  try {
+    const r = await fetch(PHOTOS.url + '?done=1&_=' + Date.now(), {redirect:'follow', cache:'no-store'});
+    const j = await r.json();
+    if (!j || !j.ok || !Array.isArray(j.done)) return;
+    const next = {};
+    for (const d of j.done){ if (d.stop && (!next[d.stop] || d.at > next[d.stop].at)) next[d.stop] = {by:d.by || '', at:d.at || ''}; }
+    const changed = JSON.stringify(next) !== JSON.stringify(remote);
+    remote = next; remoteAt = Date.now(); store.set('rp-remote', remote);
+    if (changed) render();
+  } catch (e){} finally { remoteBusy = false; }
+}
+function remoteLabel(id){
+  const d = remote[id]; if (!d) return '';
+  let when = '';
+  try { when = d.at ? new Date(d.at).toLocaleTimeString([], {hour:'numeric', minute:'2-digit'}) : ''; } catch (e){}
+  return (d.by ? d.by : 'another phone') + (when ? ' · ' + when : '');
+}
+setInterval(() => { if (document.visibilityState === 'visible') fetchDone(); }, 30000);
 
 async function save(s, btn, msg){
   const d = getDraft(s.id);
@@ -515,6 +542,7 @@ async function save(s, btn, msg){
     store.set('rp-queue', queue().concat([body]));
   }
   requestClose();
+  setTimeout(fetchDone, 4000);
 }
 function allAnswersText(){
   const out = {by: whoAmI(), exported: new Date().toISOString(), saved: Object.values(saved), unsent: queue().map(b => b.stop), photos: photos.map(p => ({stop:p.stop, by:p.by, at:p.at, sent:p.sent, file:p.file})),
@@ -560,7 +588,8 @@ Object.assign(saved, store.get('rp-saved') || {});
 render();
 flushQueue();
 pdb.all().then(all => { photos = all; if (openId) renderPhotos(STOPS.find(x => x.id === openId)); flushPhotos(); }).catch(() => {});
-document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible'){ flushQueue(); flushPhotos(); } });
+fetchDone();
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible'){ flushQueue(); flushPhotos(); fetchDone(); } });
 window.addEventListener('online', () => { flushQueue(); flushPhotos(); });
 function showBanner(t){ const b = document.getElementById('banner'); b.textContent = t; b.hidden = false; }
 </script>
