@@ -176,7 +176,8 @@ function questions(s){
     const q = [
     {id:'present', label:'Is there a drinking fountain here?', opts:[['yes','Yes'],['no','No'],['unsure',"Can't find it"]]},
     {id:'works', label:'Does it work right now?', opts:[['yes','Water flows'],['off','Turned off'],['broken','Broken']], when:here},
-    {id:'bottle', label:'Is there a bottle filler?', opts:[['yes','Yes'],['no','No']], when:here}];
+    {id:'bottle', label:'Is there a bottle filler?', opts:[['yes','Yes'],['no','No']], when:here},
+    {id:'seasonal', label:'Is it shut off for part of the year?', opts:[['yes','Yes'],['no','No, runs all year'],['unknown',"Don't know"]], when:here}];
     if (s.memorial) q.push({id:'memorial', label:'Is this an old stone memorial fountain with an inscription? If so, type the inscription and photograph it.', type:'text'});
     return q;
   }
