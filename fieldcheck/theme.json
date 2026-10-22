@@ -25,7 +25,7 @@
       },
       "source": {
         "geoJson": "https://robertsoden.io/riverside/fieldcheck/stops.geojson",
-        "osmTags": "id~*"
+        "osmTags": "rp_stop=yes"
       },
       "minzoom": 13,
       "title": {
