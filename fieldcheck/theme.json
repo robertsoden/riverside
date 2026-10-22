@@ -405,7 +405,7 @@
       "override": {
         "minzoom": 14,
         "description": {
-          "en": "Drinking fountains in the park. Tap one to say whether it works right now, whether there is a bottle filler, and whether it is shut off for part of the year."
+          "en": "Drinking fountains in the park. Tap one to say whether it works right now and whether there is a bottle filler."
         },
         "=tagRenderings": [
           "images",
@@ -464,33 +464,6 @@
                 "then": {
                   "en": "<b>No</b> bottle filler"
                 }
-              }
-            ]
-          },
-          {
-            "id": "fountain-seasonal",
-            "question": {
-              "en": "Is this fountain shut off for part of the year?"
-            },
-            "mappings": [
-              {
-                "if": "seasonal=yes",
-                "then": {
-                  "en": "<b>Yes</b>: shut off for part of the year"
-                }
-              },
-              {
-                "if": "seasonal=no",
-                "then": {
-                  "en": "<b>No</b>: runs all year"
-                }
-              },
-              {
-                "if": "seasonal~*",
-                "then": {
-                  "en": "Seasonal availability recorded as <b>{seasonal}</b>"
-                },
-                "showAsOptionIf": false
               }
             ]
           }
