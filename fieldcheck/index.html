@@ -88,6 +88,7 @@ a.btn{text-decoration:none;display:inline-block}
 .photos input[type=file]{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden}
 .photos label.btn{display:inline-block}
 .hint.remote{color:#2E7867;margin:0 0 6px}
+.linkbtn{font:inherit;color:var(--ink);background:none;border:0;padding:0;text-decoration:underline;cursor:pointer}
 fieldset{border:0;padding:0;margin:0;display:flex;flex-direction:column;gap:8px}
 legend{font-weight:500;padding:0;margin-bottom:8px}
 .opts{display:flex;flex-wrap:wrap;gap:6px}
@@ -142,6 +143,7 @@ textarea{min-height:64px;resize:vertical}
     <p>Stop numbers match the printed route sheet and map. Stops 1–5 are done on this page, 6–10 in MapComplete, 11–12 on whichever you prefer. Street names are the nearest cross street and are approximate north of 122nd. Nothing is changed in OpenStreetMap until an editor reviews your answers.</p>
     <p>Answers are sent as you save them and also kept on this phone. If the end of the morning comes and anything shows as unsent, tap <b>Send unsent</b>, or <b>Copy all answers</b> and paste them into a message.</p>
     <div class="actions"><button type="button" class="btn" id="resend">Send unsent</button><button type="button" class="btn" id="copyall">Copy all answers</button><a class="btn" id="mailall" href="#">Email all answers</a><span class="msg" id="syncmsg"></span></div>
+    <p class="small"><button type="button" class="linkbtn" id="resetbtn">Reset this phone</button> — wipes this phone's saved answers, photos and progress (what has already been sent stays in the Sheet).</p>
  </details>
   <div class="banner" id="banner" hidden></div>
 
@@ -551,6 +553,16 @@ function allAnswersText(){
 }
 document.getElementById('resend').addEventListener('click', async () => { const m = document.getElementById('syncmsg'); m.textContent = 'Sending…'; const n = await flushQueue() + await flushPhotos(); if (!queue().length && !unsentPhotos().length) m.textContent = n ? `Sent ${n}.` : 'Nothing unsent.'; });
 document.getElementById('copyall').addEventListener('click', async () => { const m = document.getElementById('syncmsg'); try { await navigator.clipboard.writeText(allAnswersText()); m.textContent = 'Copied. Paste into a message to Robert.'; } catch (e){ m.textContent = 'Could not copy on this phone; use Email instead.'; } });
+let resetArmed = 0;
+document.getElementById('resetbtn').addEventListener('click', async e => {
+  const b = e.currentTarget;
+  if (Date.now() - resetArmed > 6000){ resetArmed = Date.now(); b.textContent = 'Really reset this phone? Tap again'; setTimeout(() => { if (Date.now() - resetArmed >= 6000) b.textContent = 'Reset this phone'; }, 6500); return; }
+  try { for (const k of Object.keys(localStorage)) if (k.startsWith('rp-')) localStorage.removeItem(k); } catch (err){}
+  try { const d = await pdb.open(); await new Promise((res, rej) => { const t = d.transaction('p', 'readwrite'); t.objectStore('p').clear(); t.oncomplete = () => res(); t.onerror = () => rej(t.error); }); } catch (err){}
+  for (const k of Object.keys(saved)) delete saved[k]; for (const k of Object.keys(draft)) delete draft[k]; photos = []; remote = {}; openId = null;
+  document.getElementById('who').value = '';
+  b.textContent = 'Reset. Type your name to start again.'; render(); window.scrollTo(0, 0);
+});
 document.getElementById('mailall').addEventListener('click', e => { e.currentTarget.href = 'mailto:' + EMAIL + '?subject=' + encodeURIComponent('Riverside field check answers (' + whoAmI() + ')') + '&body=' + encodeURIComponent(allAnswersText()); });
 document.getElementById('who').value = store.get('rp-by') || '';
 document.getElementById('who').addEventListener('change', whoAmI);
